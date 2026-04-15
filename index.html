@@ -4,101 +4,505 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FinanceiroApp — Controle Financeiro</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #161b27;
+  --bg-card: #1e2535;
+  --bg-hover: #252d40;
+  --border: #2a3348;
+  --border-light: #323d56;
+  --text-primary: #e8edf5;
+  --text-secondary: #8892a4;
+  --text-muted: #5a6478;
+  --accent-blue: #3b82f6;
+  --accent-blue-dark: #2563eb;
+  --accent-green: #10b981;
+  --accent-green-dark: #059669;
+  --accent-red: #ef4444;
+  --accent-red-dark: #dc2626;
+  --accent-yellow: #f59e0b;
+  --accent-purple: #8b5cf6;
+  --accent-cyan: #06b6d4;
+  --sidebar-w: 240px;
+  --header-h: 60px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+  --font: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --transition: all 0.2s ease;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+/* ── LAYOUT ── */
+#app { display: flex; height: 100vh; }
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  transition: width 0.3s ease;
+}
+#sidebar.collapsed { width: 60px; }
+
+.sidebar-logo {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--header-h);
+}
+.sidebar-logo .logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.sidebar-logo .logo-text {
+  font-weight: 700; font-size: 13px; color: var(--text-primary);
+  line-height: 1.2;
+}
+.sidebar-logo .logo-text small { color: var(--text-secondary); font-weight: 400; font-size: 11px; display: block; }
+
+.nav-section { padding: 8px 0; }
+.nav-label {
+  padding: 6px 16px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.sidebar.collapsed .nav-label { display: none; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: var(--transition);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 3px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active {
+  background: rgba(59,130,246,0.12);
+  color: var(--accent-blue);
+  border-left-color: var(--accent-blue);
+}
+.nav-item .icon { font-size: 16px; flex-shrink: 0; width: 20px; text-align: center; }
+
+/* ── MAIN ── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── TOPBAR ── */
+#topbar {
+  height: var(--header-h);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+#topbar h1 { font-size: 16px; font-weight: 600; flex: 1; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ── CONTENT ── */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+/* ── GRID ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* ── KPI CARDS ── */
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex; align-items: center; gap: 14px;
+}
+.kpi-icon {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.kpi-data .label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.kpi-data .value { font-size: 22px; font-weight: 700; font-family: var(--font-mono); margin-top: 2px; }
+.kpi-data .sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.kpi-green .kpi-icon { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+.kpi-green .value { color: var(--accent-green); }
+.kpi-red .kpi-icon { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+.kpi-red .value { color: var(--accent-red); }
+.kpi-blue .kpi-icon { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+.kpi-blue .value { color: var(--accent-blue); }
+.kpi-yellow .kpi-icon { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
+.kpi-yellow .value { color: var(--accent-yellow); }
+
+/* ── BUTTONS ── */
+.btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  transition: var(--transition);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--accent-blue); color: #fff; }
+.btn-primary:hover { background: var(--accent-blue-dark); }
+.btn-success { background: var(--accent-green); color: #fff; }
+.btn-success:hover { background: var(--accent-green-dark); }
+.btn-danger { background: var(--accent-red); color: #fff; }
+.btn-danger:hover { background: var(--accent-red-dark); }
+.btn-warning { background: var(--accent-yellow); color: #000; }
+.btn-secondary { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* ── FORMS ── */
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+.form-control {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  transition: var(--transition);
+  outline: none;
+}
+.form-control:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+select.form-control { cursor: pointer; }
+.form-row { display: grid; gap: 12px; }
+.form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--bg-hover); }
+thead th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); white-space: nowrap; }
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+tbody tr:hover { background: var(--bg-hover); }
+tbody td { padding: 10px 12px; color: var(--text-primary); }
+tbody tr:last-child { border-bottom: none; }
+.td-mono { font-family: var(--font-mono); font-size: 12px; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-green { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+.badge-red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+.badge-yellow { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
+.badge-blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+.badge-gray { background: rgba(100,116,139,0.15); color: var(--text-secondary); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h2 { font-size: 16px; font-weight: 700; }
+.modal-close { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 20px; padding: 4px; border-radius: 4px; transition: var(--transition); }
+.modal-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.modal-body { padding: 20px 24px; }
+.modal-footer { padding: 16px 24px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+.modal-lg { max-width: 800px; }
+.modal-xl { max-width: 1000px; }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  transition: var(--transition);
+}
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); font-weight: 600; }
+
+/* ── ALERTS ── */
+.alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; border: 1px solid; }
+.alert-success { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: var(--accent-green); }
+.alert-danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: var(--accent-red); }
+.alert-warning { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: var(--accent-yellow); }
+.alert-info { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: var(--accent-blue); }
+
+/* ── TOAST ── */
+#toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+  animation: toastIn 0.3s ease;
+  min-width: 280px;
+}
+@keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.toast.success { border-left: 4px solid var(--accent-green); }
+.toast.error { border-left: 4px solid var(--accent-red); }
+.toast.info { border-left: 4px solid var(--accent-blue); }
+
+/* ── PROGRESS BAR ── */
+.progress-bar { background: var(--bg-hover); border-radius: 4px; height: 6px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; margin-bottom: 16px; }
+
+/* ── SECTION HEADER ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.section-title { font-size: 16px; font-weight: 700; }
+.section-actions { display: flex; gap: 8px; }
+
+/* ── DIVIDER ── */
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  :root { --sidebar-w: 60px; }
+  .nav-label, .nav-item span { display: none; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .form-row.cols-2, .form-row.cols-3, .form-row.cols-4 { grid-template-columns: 1fr; }
+}
+
+/* ── DASHBOARD CHART PLACEHOLDER ── */
+.chart-container { position: relative; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+canvas { max-width: 100%; }
+
+/* ── TWO PANEL LAYOUT ── */
+.split-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.panel-header {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  margin-bottom: 0;
+}
+.panel-receita { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+.panel-despesa { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+.panel-body { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0 0 var(--radius-sm) var(--radius-sm); overflow: hidden; }
+
+/* ── FILTERS BAR ── */
+.filters-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.filters-bar .form-group { margin-bottom: 0; }
+
+/* ── SUMMARY BAR ── */
+.summary-bar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.summary-item .label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+.summary-item .val { font-size: 16px; font-weight: 700; font-family: var(--font-mono); margin-top: 2px; }
+
+/* Colors for summary */
+.col-green { color: var(--accent-green) !important; }
+.col-red { color: var(--accent-red) !important; }
+.col-yellow { color: var(--accent-yellow) !important; }
+.col-blue { color: var(--accent-blue) !important; }
+.col-muted { color: var(--text-muted) !important; }
+
+/* ── INLINE ACTIONS ── */
+.action-btns { display: flex; gap: 4px; }
+.btn-icon { width: 28px; height: 28px; border-radius: var(--radius-sm); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: var(--transition); }
+.btn-icon-blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+.btn-icon-blue:hover { background: var(--accent-blue); color: #fff; }
+.btn-icon-green { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+.btn-icon-green:hover { background: var(--accent-green); color: #fff; }
+.btn-icon-red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+.btn-icon-red:hover { background: var(--accent-red); color: #fff; }
+.btn-icon-yellow { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
+.btn-icon-yellow:hover { background: var(--accent-yellow); color: #000; }
+
+/* Realtime badge */
+#rt-status {
+  position: fixed; bottom: 16px; right: 16px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 12px;
+  font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px;
+  z-index: 9998; color: var(--text-secondary);
+}
+#rt-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+#rt-status.offline #rt-dot { background: var(--accent-red); animation: none; }
+  </style>
 </head>
 <body>
 
-<!-- Toast container -->
 <div id="toast-container"></div>
+<div id="rt-status"><div id="rt-dot"></div><span id="rt-label">Conectado</span></div>
 
-<!-- App -->
 <div id="app" style="display:none">
-  
-  <!-- Sidebar -->
   <nav id="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon">💰</div>
       <div class="logo-text">FinanceiroApp<small>Controle Financeiro</small></div>
     </div>
-    
     <div class="nav-section">
       <div class="nav-label">Principal</div>
-      <div class="nav-item" data-page="dashboard" onclick="navigate('dashboard')">
-        <span class="icon">📊</span><span>Dashboard</span>
-      </div>
+      <div class="nav-item" data-page="dashboard" onclick="navigate('dashboard')"><span class="icon">📊</span><span>Dashboard</span></div>
     </div>
-    
     <div class="nav-section">
       <div class="nav-label">Lançamentos</div>
-      <div class="nav-item" data-page="receitas" onclick="navigate('receitas')">
-        <span class="icon">💚</span><span>Receitas</span>
-      </div>
-      <div class="nav-item" data-page="despesas" onclick="navigate('despesas')">
-        <span class="icon">❤️</span><span>Despesas</span>
-      </div>
-      <div class="nav-item" data-page="poupanca" onclick="navigate('poupanca')">
-        <span class="icon">🏦</span><span>Poupança</span>
-      </div>
+      <div class="nav-item" data-page="receitas" onclick="navigate('receitas')"><span class="icon">💚</span><span>Receitas</span></div>
+      <div class="nav-item" data-page="despesas" onclick="navigate('despesas')"><span class="icon">❤️</span><span>Despesas</span></div>
+      <div class="nav-item" data-page="poupanca" onclick="navigate('poupanca')"><span class="icon">🏦</span><span>Poupança</span></div>
     </div>
-    
     <div class="nav-section">
       <div class="nav-label">Contas</div>
-      <div class="nav-item" data-page="contas_receber" onclick="navigate('contas_receber')">
-        <span class="icon">📥</span><span>A Receber</span>
-      </div>
-      <div class="nav-item" data-page="contas_pagar" onclick="navigate('contas_pagar')">
-        <span class="icon">📤</span><span>A Pagar</span>
-      </div>
-      <div class="nav-item" data-page="cartao" onclick="navigate('cartao')">
-        <span class="icon">💳</span><span>Cartão Crédito</span>
-      </div>
-      <div class="nav-item" data-page="transferencias" onclick="navigate('transferencias')">
-        <span class="icon">🔄</span><span>Transferências</span>
-      </div>
+      <div class="nav-item" data-page="contas_receber" onclick="navigate('contas_receber')"><span class="icon">📥</span><span>A Receber</span></div>
+      <div class="nav-item" data-page="contas_pagar" onclick="navigate('contas_pagar')"><span class="icon">📤</span><span>A Pagar</span></div>
+      <div class="nav-item" data-page="cartao" onclick="navigate('cartao')"><span class="icon">💳</span><span>Cartão Crédito</span></div>
+      <div class="nav-item" data-page="transferencias" onclick="navigate('transferencias')"><span class="icon">🔄</span><span>Transferências</span></div>
     </div>
-    
     <div class="nav-section">
       <div class="nav-label">Análise</div>
-      <div class="nav-item" data-page="extrato" onclick="navigate('extrato')">
-        <span class="icon">📋</span><span>Extrato Comparativo</span>
-      </div>
-      <div class="nav-item" data-page="relatorios" onclick="navigate('relatorios')">
-        <span class="icon">📑</span><span>Relatórios</span>
-      </div>
-      <div class="nav-item" data-page="graficos" onclick="navigate('graficos')">
-        <span class="icon">📈</span><span>Gráficos</span>
-      </div>
-      <div class="nav-item" data-page="conciliacao" onclick="navigate('conciliacao')">
-        <span class="icon">🔍</span><span>Conciliação</span>
-      </div>
+      <div class="nav-item" data-page="extrato" onclick="navigate('extrato')"><span class="icon">📋</span><span>Extrato Comparativo</span></div>
+      <div class="nav-item" data-page="relatorios" onclick="navigate('relatorios')"><span class="icon">📑</span><span>Relatórios</span></div>
+      <div class="nav-item" data-page="graficos" onclick="navigate('graficos')"><span class="icon">📈</span><span>Gráficos</span></div>
+      <div class="nav-item" data-page="conciliacao" onclick="navigate('conciliacao')"><span class="icon">🔍</span><span>Conciliação</span></div>
     </div>
-    
     <div class="nav-section">
       <div class="nav-label">Configurações</div>
-      <div class="nav-item" data-page="centros_custo" onclick="navigate('centros_custo')">
-        <span class="icon">🏢</span><span>Centro de Custo</span>
-      </div>
-      <div class="nav-item" data-page="cadastros" onclick="navigate('cadastros')">
-        <span class="icon">⚙️</span><span>Cadastros</span>
-      </div>
-      <div class="nav-item" data-page="usuarios" onclick="navigate('usuarios')">
-        <span class="icon">👥</span><span>Usuários</span>
-      </div>
-      <div class="nav-item" data-page="backup" onclick="navigate('backup')">
-        <span class="icon">💾</span><span>Backup</span>
-      </div>
+      <div class="nav-item" data-page="centros_custo" onclick="navigate('centros_custo')"><span class="icon">🏢</span><span>Centro de Custo</span></div>
+      <div class="nav-item" data-page="cadastros" onclick="navigate('cadastros')"><span class="icon">⚙️</span><span>Cadastros</span></div>
+      <div class="nav-item" data-page="usuarios" onclick="navigate('usuarios')"><span class="icon">👥</span><span>Usuários</span></div>
+      <div class="nav-item" data-page="backup" onclick="navigate('backup')"><span class="icon">💾</span><span>Backup</span></div>
     </div>
-    
     <div style="padding:16px;margin-top:auto;border-top:1px solid var(--border)">
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px" id="user-name">...</div>
       <button class="btn btn-secondary btn-sm" style="width:100%;justify-content:center" onclick="logout()">🚪 Sair</button>
     </div>
   </nav>
-  
-  <!-- Main content area -->
   <div id="main">
-    <!-- Topbar -->
     <header id="topbar">
       <h1 id="page-title">Dashboard</h1>
       <div class="topbar-actions">
@@ -107,21 +511,1035 @@
         <button class="btn btn-ghost btn-sm" onclick="navigate('backup')" title="Backup">💾</button>
       </div>
     </header>
-    
-    <!-- Page content -->
     <main id="content"></main>
   </div>
-  
 </div>
 
-<!-- Scripts -->
-<script src="js/db.js"></script>
-<script src="js/app.js"></script>
-<script src="js/dashboard.js"></script>
-<script src="js/lancamentos.js"></script>
-<script src="js/contas.js"></script>
-<script src="js/extras.js"></script>
-<script src="js/cadastros.js"></script>
+<script>
+// ══════════════════════════════════════════
+// SUPABASE CONFIG
+// ══════════════════════════════════════════
+const SUPA_URL = 'https://iqefyujbohknfkiitqcj.supabase.co';
+const SUPA_KEY = 'sb_publishable_yko8fI9f5g4yV4OL3NI84Q_jYgehJe-';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
+// ══════════════════════════════════════════
+// DB LAYER — substitui IndexedDB
+// ══════════════════════════════════════════
+async function dbGet(table, id) {
+  if (id !== undefined) {
+    const { data, error } = await supa.from(table).select('*').eq('id', id).single();
+    if (error) { console.error('dbGet', table, id, error); return null; }
+    return data;
+  }
+  const { data, error } = await supa.from(table).select('*').order('id');
+  if (error) { console.error('dbGet', table, error); return []; }
+  return data || [];
+}
+
+async function dbAdd(table, obj) {
+  const clean = { ...obj };
+  delete clean.id; // deixa o Supabase gerar o id
+  const { data, error } = await supa.from(table).insert(clean).select('id').single();
+  if (error) { console.error('dbAdd', table, error); throw error; }
+  return data.id;
+}
+
+async function dbPut(table, obj) {
+  const { error } = await supa.from(table).upsert(obj);
+  if (error) { console.error('dbPut', table, error); throw error; }
+}
+
+async function dbDelete(table, id) {
+  const { error } = await supa.from(table).delete().eq('id', id);
+  if (error) { console.error('dbDelete', table, error); throw error; }
+}
+
+async function dbClear(table) {
+  const { error } = await supa.from(table).delete().neq('id', 0);
+  if (error) console.error('dbClear', table, error);
+}
+
+// Realtime: recarrega página atual quando dados mudam
+function setupRealtime() {
+  supa.channel('db-changes')
+    .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+      // Atualiza badge
+      document.getElementById('rt-label').textContent = 'Atualizado';
+      setTimeout(() => { document.getElementById('rt-label').textContent = 'Conectado'; }, 2000);
+      // Re-renderiza página atual se for tabela relevante
+      const relevantes = ['parcelas_receita','parcelas_despesa','receitas','despesas','transferencias','poupanca','lancamentos_cartao'];
+      if (relevantes.includes(payload.table) && currentPage) {
+        const page = PAGES[currentPage];
+        if (page) page.fn(document.getElementById('content'));
+      }
+    })
+    .subscribe((status) => {
+      const el = document.getElementById('rt-status');
+      if (status === 'SUBSCRIBED') {
+        el.classList.remove('offline');
+        document.getElementById('rt-label').textContent = 'Conectado';
+      } else {
+        el.classList.add('offline');
+        document.getElementById('rt-label').textContent = 'Offline';
+      }
+    });
+}
+
+// Helpers (mantidos do original)
+function formatCurrency(val) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+}
+function formatDate(d) {
+  if (!d) return '';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('pt-BR');
+}
+function parseCurrency(str) {
+  if (typeof str === 'number') return str;
+  return parseFloat(String(str).replace(/\./g, '').replace(',', '.')) || 0;
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+function addMonths(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setMonth(d.getMonth() + n);
+  return d.toISOString().split('T')[0];
+}
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transform='translateX(100%)'; el.style.transition='0.3s'; setTimeout(()=>el.remove(),300); }, 3000);
+}
+function openModal(id) { document.getElementById(id).style.display='flex'; }
+function closeModal(id) { document.getElementById(id).style.display='none'; }
+function confirmDialog(msg) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `<div class="modal" style="max-width:400px">
+      <div class="modal-header"><h2>⚠️ Confirmação</h2></div>
+      <div class="modal-body"><p style="color:var(--text-secondary)">${msg}</p></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="conf-no">Cancelar</button>
+        <button class="btn btn-danger" id="conf-yes">Confirmar</button>
+      </div></div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#conf-yes').onclick = () => { overlay.remove(); resolve(true); };
+    overlay.querySelector('#conf-no').onclick = () => { overlay.remove(); resolve(false); };
+  });
+}
+function printSection(html, title) {
+  const w = window.open('','','width=900,height=700');
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:12px;margin:20px;color:#000}h2{margin-bottom:16px;font-size:16px}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#1a1a2e;color:#fff;padding:8px;text-align:left;font-size:11px}
+  td{padding:6px 8px;border-bottom:1px solid #eee}tr:nth-child(even) td{background:#f9f9f9}
+  .total{font-weight:bold;font-size:13px}.green{color:#10b981}.red{color:#ef4444}
+  @media print{button{display:none!important}}</style></head><body>
+  <h2>${title}</h2>${html}<script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+function exportCSV(data, filename) {
+  if (!data.length) { toast('Nenhum dado para exportar','warning'); return; }
+  const headers = Object.keys(data[0]);
+  const rows = data.map(r => headers.map(h=>`"${(r[h]||'').toString().replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','),...rows].join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+// ══════════════════════════════════════════
+// APP — Auth, Router
+// ══════════════════════════════════════════
+let currentUser = null;
+
+async function checkAuth() {
+  const sess = sessionStorage.getItem('user');
+  if (sess) { currentUser = JSON.parse(sess); return true; }
+  return false;
+}
+
+async function login(username, password) {
+  const users = await dbGet('usuarios');
+  const user = users.find(u => u.username === username && u.password === password && u.ativo);
+  if (user) { currentUser = user; sessionStorage.setItem('user', JSON.stringify(user)); return true; }
+  return false;
+}
+
+function logout() { sessionStorage.removeItem('user'); currentUser = null; showLogin(); }
+
+function showLogin() {
+  document.getElementById('app').style.display = 'none';
+  let loginEl = document.getElementById('login-screen');
+  if (!loginEl) {
+    loginEl = document.createElement('div');
+    loginEl.id = 'login-screen';
+    loginEl.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg-primary)">
+      <div style="width:380px">
+        <div style="text-align:center;margin-bottom:32px">
+          <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px">💰</div>
+          <h1 style="font-size:22px;font-weight:800">FinanceiroApp</h1>
+          <p style="color:var(--text-secondary);font-size:13px;margin-top:4px">Controle Financeiro Profissional</p>
+        </div>
+        <div class="card">
+          <div class="form-group"><label class="form-label">Usuário</label>
+            <input type="text" class="form-control" id="login-user" value="admin" placeholder="admin"></div>
+          <div class="form-group"><label class="form-label">Senha</label>
+            <input type="password" class="form-control" id="login-pass" value="1234" placeholder="••••••"></div>
+          <div id="login-error" class="alert alert-danger" style="display:none"></div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="doLogin()">🔐 Entrar</button>
+          <p style="text-align:center;color:var(--text-muted);font-size:12px;margin-top:12px">Login padrão: admin / 1234</p>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(loginEl);
+  }
+  loginEl.style.display = 'block';
+  document.getElementById('login-pass').addEventListener('keydown', e => e.key==='Enter' && doLogin());
+}
+
+async function doLogin() {
+  const user = document.getElementById('login-user').value;
+  const pass = document.getElementById('login-pass').value;
+  const btn = document.querySelector('#login-screen .btn-primary');
+  btn.textContent = '⏳ Entrando...'; btn.disabled = true;
+  const ok = await login(user, pass);
+  btn.textContent = '🔐 Entrar'; btn.disabled = false;
+  if (ok) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    updateUserInfo();
+    navigate('dashboard');
+  } else {
+    const err = document.getElementById('login-error');
+    err.textContent = 'Usuário ou senha inválidos';
+    err.style.display = 'block';
+  }
+}
+
+const PAGES = {
+  dashboard: { label: 'Dashboard', fn: renderDashboard },
+  receitas: { label: 'Lançar Receita', fn: renderReceitas },
+  despesas: { label: 'Lançar Despesa', fn: renderDespesas },
+  contas_receber: { label: 'Contas a Receber', fn: renderContasReceber },
+  contas_pagar: { label: 'Contas a Pagar', fn: renderContasPagar },
+  extrato: { label: 'Extrato Comparativo', fn: renderExtrato },
+  transferencias: { label: 'Transferências', fn: renderTransferencias },
+  cartao: { label: 'Cartão de Crédito', fn: renderCartao },
+  poupanca: { label: 'Poupança', fn: renderPoupanca },
+  relatorios: { label: 'Relatórios', fn: renderRelatorios },
+  graficos: { label: 'Gráficos', fn: renderGraficos },
+  conciliacao: { label: 'Conciliação Bancária', fn: renderConciliacao },
+  centros_custo: { label: 'Centro de Custo', fn: renderCentrosCusto },
+  cadastros: { label: 'Cadastros', fn: renderCadastros },
+  usuarios: { label: 'Usuários', fn: renderUsuarios },
+  backup: { label: 'Backup', fn: renderBackup },
+};
+
+let currentPage = '';
+
+function navigate(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+  const p = PAGES[page];
+  document.getElementById('page-title').textContent = p ? p.label : page;
+  const content = document.getElementById('content');
+  content.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-muted)">⏳ Carregando...</div>';
+  if (p && p.fn) p.fn(content);
+}
+
+function updateUserInfo() {
+  if (currentUser) document.getElementById('user-name').textContent = currentUser.nome;
+}
+
+async function init() {
+  setupRealtime();
+  const authed = await checkAuth();
+  if (!authed) { showLogin(); } else {
+    document.getElementById('app').style.display = 'flex';
+    updateUserInfo();
+    navigate('dashboard');
+  }
+}
+
+window.addEventListener('DOMContentLoaded', init);
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+async function renderDashboard(container) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const monthStr = String(month).padStart(2, '0');
+
+  const [parcReceit, parcDesp, contas] = await Promise.all([
+    dbGet('parcelas_receita'), dbGet('parcelas_despesa'), dbGet('contas'),
+  ]);
+
+  const recMes = parcReceit.filter(p => p.dt_pagamento && p.dt_pagamento.startsWith(`${year}-${monthStr}`));
+  const despMes = parcDesp.filter(p => p.dt_pagamento && p.dt_pagamento.startsWith(`${year}-${monthStr}`));
+  const totalRecMes = recMes.reduce((s,p) => s+(parseFloat(p.valor_pago)||0), 0);
+  const totalDespMes = despMes.reduce((s,p) => s+(parseFloat(p.valor_pago)||0), 0);
+  const saldoMes = totalRecMes - totalDespMes;
+
+  const aReceber = parcReceit.filter(p => !p.dt_pagamento);
+  const aPagar = parcDesp.filter(p => !p.dt_pagamento);
+  const vencidas_r = aReceber.filter(p => p.vencimento < today());
+  const vencidas_d = aPagar.filter(p => p.vencimento < today());
+  const totalAReceber = aReceber.reduce((s,p) => s+(parseFloat(p.valor)||0), 0);
+
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const resumoAnual = meses.map((mes, i) => {
+    const m = String(i+1).padStart(2,'0');
+    const rec = parcReceit.filter(p => p.dt_pagamento && p.dt_pagamento.startsWith(`${year}-${m}`)).reduce((s,p) => s+(parseFloat(p.valor_pago)||0), 0);
+    const desp = parcDesp.filter(p => p.dt_pagamento && p.dt_pagamento.startsWith(`${year}-${m}`)).reduce((s,p) => s+(parseFloat(p.valor_pago)||0), 0);
+    return { mes, rec, desp, saldo: rec - desp };
+  });
+
+  const despMesMap = {};
+  for (const p of despMes) { const key = p.categoria||'Outros'; despMesMap[key] = (despMesMap[key]||0) + (parseFloat(p.valor_pago)||0); }
+  const topDesp = Object.entries(despMesMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const totalRecAno = resumoAnual.reduce((s,m)=>s+m.rec,0);
+  const totalDespAno = resumoAnual.reduce((s,m)=>s+m.desp,0);
+
+  container.innerHTML = `<div style="display:flex;flex-direction:column;gap:20px">
+    <div class="grid-4">
+      <div class="kpi-card kpi-green"><div class="kpi-icon">💰</div><div class="kpi-data"><div class="label">Receitas do Mês</div><div class="value">${formatCurrency(totalRecMes)}</div><div class="sub">${recMes.length} pagamentos recebidos</div></div></div>
+      <div class="kpi-card kpi-red"><div class="kpi-icon">💸</div><div class="kpi-data"><div class="label">Despesas do Mês</div><div class="value">${formatCurrency(totalDespMes)}</div><div class="sub">${despMes.length} pagamentos efetuados</div></div></div>
+      <div class="kpi-card ${saldoMes>=0?'kpi-blue':'kpi-red'}"><div class="kpi-icon">${saldoMes>=0?'📈':'📉'}</div><div class="kpi-data"><div class="label">Saldo do Mês</div><div class="value">${formatCurrency(saldoMes)}</div><div class="sub">${meses[month-1]}/${year}</div></div></div>
+      <div class="kpi-card kpi-yellow"><div class="kpi-icon">⏳</div><div class="kpi-data"><div class="label">A Receber</div><div class="value">${formatCurrency(totalAReceber)}</div><div class="sub">${vencidas_r.length} parcela(s) vencida(s)</div></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">📊 Receitas × Despesas — ${year}</div><canvas id="chart-anual" height="180"></canvas></div>
+      <div class="card"><div class="card-title">🍕 Despesas por Categoria — ${meses[month-1]}</div><canvas id="chart-pizza" height="180"></canvas></div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-title">📅 Resumo Anual ${year}</div><div class="table-wrap"><table>
+        <thead><tr><th>Mês</th><th>Receita</th><th>Despesa</th><th>Saldo</th></tr></thead>
+        <tbody>${resumoAnual.map(m=>`<tr><td style="font-weight:600">${m.mes}</td><td class="col-green td-mono">${m.rec>0?formatCurrency(m.rec):'-'}</td><td class="col-red td-mono">${m.desp>0?formatCurrency(m.desp):'-'}</td><td class="td-mono ${m.saldo>=0?'col-green':'col-red'}">${m.rec>0||m.desp>0?formatCurrency(m.saldo):'-'}</td></tr>`).join('')}
+        <tr style="border-top:2px solid var(--border);font-weight:700"><td>TOTAL</td><td class="col-green td-mono">${formatCurrency(totalRecAno)}</td><td class="col-red td-mono">${formatCurrency(totalDespAno)}</td><td class="td-mono ${totalRecAno-totalDespAno>=0?'col-green':'col-red'}">${formatCurrency(totalRecAno-totalDespAno)}</td></tr>
+        </tbody></table></div></div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card"><div class="card-title">🚨 Parcelas Vencidas</div>
+          ${vencidas_r.length===0&&vencidas_d.length===0?'<div class="empty-state" style="padding:20px"><p style="color:var(--accent-green)">✅ Tudo em dia!</p></div>':
+          `<div style="display:flex;flex-direction:column;gap:8px">
+            ${vencidas_r.length>0?`<div class="alert alert-warning">📥 ${vencidas_r.length} a receber vencida(s) — ${formatCurrency(vencidas_r.reduce((s,p)=>s+(parseFloat(p.valor)||0),0))}</div>`:''}
+            ${vencidas_d.length>0?`<div class="alert alert-danger">📤 ${vencidas_d.length} a pagar vencida(s) — ${formatCurrency(vencidas_d.reduce((s,p)=>s+(parseFloat(p.valor)||0),0))}</div>`:''}
+          </div>`}
+        </div>
+        <div class="card"><div class="card-title">🏆 Top Despesas do Mês</div>
+          ${topDesp.length===0?'<p style="color:var(--text-muted);font-size:13px">Sem despesas pagas este mês</p>':
+          topDesp.map(([cat,val])=>{const pct=totalDespMes>0?(val/totalDespMes*100).toFixed(0):0;return`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px">${cat}</span><span class="col-red td-mono" style="font-size:12px">${formatCurrency(val)} (${pct}%)</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:var(--accent-red)"></div></div></div>`;}).join('')}
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  drawDashboardCharts(resumoAnual, meses, topDesp);
+}
+
+function drawDashboardCharts(resumoAnual, meses, topDesp) {
+  if (typeof Chart==='undefined') {
+    const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+    s.onload=()=>drawDashboardCharts(resumoAnual,meses,topDesp);document.head.appendChild(s);return;
+  }
+  const ctx1=document.getElementById('chart-anual');
+  if(ctx1){if(ctx1._chart)ctx1._chart.destroy();ctx1._chart=new Chart(ctx1,{type:'bar',data:{labels:meses,datasets:[{label:'Receita',data:resumoAnual.map(m=>m.rec),backgroundColor:'rgba(16,185,129,0.7)',borderRadius:4},{label:'Despesa',data:resumoAnual.map(m=>m.desp),backgroundColor:'rgba(239,68,68,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8892a4',font:{size:11}}}},scales:{x:{ticks:{color:'#8892a4'},grid:{color:'#2a3348'}},y:{ticks:{color:'#8892a4',callback:v=>'R$'+v.toLocaleString('pt-BR')},grid:{color:'#2a3348'}}}}})}
+  const ctx2=document.getElementById('chart-pizza');
+  if(ctx2&&topDesp.length>0){if(ctx2._chart)ctx2._chart.destroy();ctx2._chart=new Chart(ctx2,{type:'doughnut',data:{labels:topDesp.map(([cat])=>cat),datasets:[{data:topDesp.map(([,val])=>val),backgroundColor:['#ef4444','#f59e0b','#8b5cf6','#06b6d4','#10b981'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8892a4',font:{size:11},padding:8}}}}})}
+}
+
+
+// ══════════════════════════════════════════
+// LANÇAMENTOS
+// ══════════════════════════════════════════
+async function renderReceitas(container) {
+  const [cats,contas,clientes,formas,receitas] = await Promise.all([dbGet('categorias_receita'),dbGet('contas'),dbGet('clientes'),dbGet('formas_pagamento'),dbGet('receitas')]);
+  container.innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-header"><div class="section-title">💚 Lançamento de Receitas</div><button class="btn btn-success" onclick="openModalReceita()">+ Nova Receita</button></div>
+    <div class="card"><div class="card-title">Receitas Cadastradas</div><div class="table-wrap"><table id="tbl-receitas">
+      <thead><tr><th>#</th><th>Data Lanç.</th><th>Conta</th><th>Tipo</th><th>Cliente</th><th>Descrição</th><th>Parcelas</th><th>Total</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-receitas"><tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px">Carregando...</td></tr></tbody>
+    </table></div></div></div>
+    <div id="modal-receita" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-receita')">
+      <div class="modal modal-lg"><div class="modal-header"><h2>💚 Nova Receita</h2><button class="modal-close" onclick="closeModal('modal-receita')">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="rec-id">
+        <div class="form-row cols-3">
+          <div class="form-group"><label class="form-label">Conta *</label><select class="form-control" id="rec-conta">${contas.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Tipo *</label><select class="form-control" id="rec-tipo">${cats.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Cliente</label><select class="form-control" id="rec-cliente">${clientes.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-group"><label class="form-label">Forma Pagamento *</label><select class="form-control" id="rec-forma">${formas.filter(f=>f.ativo).map(f=>`<option value="${f.id}">${f.nome}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Nº Documento</label><input type="text" class="form-control" id="rec-doc"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Descrição</label><input type="text" class="form-control" id="rec-descricao"></div>
+        <div class="form-row cols-4">
+          <div class="form-group"><label class="form-label">Data 1ª Parcela *</label><input type="date" class="form-control" id="rec-data1" value="${today()}"></div>
+          <div class="form-group"><label class="form-label">Valor Parcela *</label><input type="number" step="0.01" class="form-control" id="rec-valor" placeholder="0.00"></div>
+          <div class="form-group"><label class="form-label">Qtde Parcelas *</label><input type="number" class="form-control" id="rec-qtde" value="1" min="1" max="360"></div>
+          <div class="form-group"><label class="form-label">Valor Total</label><input type="text" class="form-control" id="rec-total" readonly></div>
+        </div>
+        <button class="btn btn-success" onclick="gerarParcelasReceita()" style="margin-bottom:16px">🔄 Gerar Parcelas</button>
+        <div id="rec-parcelas-section" style="display:none">
+          <div class="card-title" style="margin-bottom:8px">Parcelas Geradas</div>
+          <div class="table-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Recebido?</th></tr></thead><tbody id="tbody-parcelas-rec"></tbody></table></div>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-receita')">Cancelar</button><button class="btn btn-success" onclick="salvarReceita()">💾 Salvar Receita</button></div>
+    </div></div>`;
+  loadReceitasList();
+  ['rec-valor','rec-qtde'].forEach(id => { document.getElementById(id)?.addEventListener('input',()=>{ const v=parseFloat(document.getElementById('rec-valor').value)||0; const q=parseInt(document.getElementById('rec-qtde').value)||1; document.getElementById('rec-total').value=formatCurrency(v*q); }); });
+}
+
+let parcelasReceitaTemp = [];
+
+function gerarParcelasReceita() {
+  const data1=document.getElementById('rec-data1').value; const valor=parseFloat(document.getElementById('rec-valor').value)||0; const qtde=parseInt(document.getElementById('rec-qtde').value)||1;
+  if(!data1||valor<=0){toast('Preencha data e valor!','error');return;}
+  parcelasReceitaTemp=[];
+  for(let i=0;i<qtde;i++) parcelasReceitaTemp.push({numero:i+1,total:qtde,vencimento:addMonths(data1,i),valor,recebido:false,dt_pagamento:null,valor_pago:0});
+  document.getElementById('tbody-parcelas-rec').innerHTML=parcelasReceitaTemp.map((p,i)=>`<tr><td>${p.numero}/${p.total}</td><td>${formatDate(p.vencimento)}</td><td class="td-mono col-green">${formatCurrency(p.valor)}</td><td><input type="checkbox" ${p.recebido?'checked':''} onchange="parcelasReceitaTemp[${i}].recebido=this.checked"></td></tr>`).join('');
+  document.getElementById('rec-parcelas-section').style.display='block';
+  document.getElementById('rec-total').value=formatCurrency(valor*qtde);
+  toast(`${qtde} parcela(s) gerada(s)!`,'success');
+}
+
+async function salvarReceita() {
+  const data1=document.getElementById('rec-data1').value; const valor=parseFloat(document.getElementById('rec-valor').value)||0; const qtde=parseInt(document.getElementById('rec-qtde').value)||1;
+  if(!data1||valor<=0){toast('Preencha todos os campos!','error');return;}
+  if(parcelasReceitaTemp.length===0){toast('Clique em "Gerar Parcelas" primeiro!','error');return;}
+  const [cats,contas,clientes,formas]=await Promise.all([dbGet('categorias_receita'),dbGet('contas'),dbGet('clientes'),dbGet('formas_pagamento')]);
+  const tipoId=parseInt(document.getElementById('rec-tipo').value); const contaId=parseInt(document.getElementById('rec-conta').value);
+  const clienteId=parseInt(document.getElementById('rec-cliente').value); const formaId=parseInt(document.getElementById('rec-forma').value);
+  const cat=cats.find(c=>c.id===tipoId); const conta=contas.find(c=>c.id===contaId);
+  const cliente=clientes.find(c=>c.id===clienteId); const forma=formas.find(f=>f.id===formaId);
+  const receitaId=await dbAdd('receitas',{data_lancamento:today(),conta_id:contaId,conta_nome:conta?.nome,tipo_id:tipoId,tipo_nome:cat?.nome,cliente_id:clienteId,cliente_nome:cliente?.nome,forma_id:formaId,forma_nome:forma?.nome,descricao:document.getElementById('rec-descricao').value,doc:document.getElementById('rec-doc').value,data_primeira:data1,valor_parcela:valor,qtde_parcelas:qtde,valor_total:valor*qtde,recebido:parcelasReceitaTemp.every(p=>p.recebido)});
+  for(const p of parcelasReceitaTemp) await dbAdd('parcelas_receita',{receita_id:receitaId,numero:p.numero,total:p.total,vencimento:p.vencimento,valor:p.valor,forma_id:formaId,forma_nome:forma?.nome,conta_id:contaId,conta_nome:conta?.nome,tipo_nome:cat?.nome,cliente_nome:cliente?.nome,descricao:document.getElementById('rec-descricao').value,dt_pagamento:p.recebido?today():null,valor_pago:p.recebido?p.valor:0,categoria:cat?.nome});
+  parcelasReceitaTemp=[];
+  closeModal('modal-receita');
+  toast('Receita salva!','success');
+  loadReceitasList();
+}
+
+async function loadReceitasList() {
+  const receitas=await dbGet('receitas'); const tbody=document.getElementById('tbody-receitas'); if(!tbody)return;
+  if(receitas.length===0){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px">Nenhuma receita lançada</td></tr>';return;}
+  tbody.innerHTML=receitas.slice().reverse().map(r=>`<tr><td>${r.id}</td><td>${formatDate(r.data_lancamento)}</td><td>${r.conta_nome}</td><td><span class="badge badge-green">${r.tipo_nome}</span></td><td>${r.cliente_nome}</td><td style="color:var(--text-secondary)">${r.descricao||'-'}</td><td>${r.qtde_parcelas}x</td><td class="td-mono col-green">${formatCurrency(r.valor_total)}</td><td><div class="action-btns"><button class="btn-icon btn-icon-red" onclick="excluirReceita(${r.id})">🗑️</button></div></td></tr>`).join('');
+}
+
+async function excluirReceita(id) {
+  if(!(await confirmDialog('Excluir esta receita e todas as suas parcelas?')))return;
+  await dbDelete('receitas',id); toast('Receita excluída!','success'); loadReceitasList();
+}
+
+function openModalReceita() {
+  parcelasReceitaTemp=[];
+  ['rec-id','rec-descricao','rec-doc','rec-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('rec-data1').value=today(); document.getElementById('rec-qtde').value='1'; document.getElementById('rec-total').value='';
+  document.getElementById('rec-parcelas-section').style.display='none';
+  openModal('modal-receita');
+}
+
+async function renderDespesas(container) {
+  const [cats,contas,fornecedores,formas,despesas]=await Promise.all([dbGet('categorias_despesa'),dbGet('contas'),dbGet('fornecedores'),dbGet('formas_pagamento'),dbGet('despesas')]);
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-header"><div class="section-title">❤️ Lançamento de Despesas</div><button class="btn btn-danger" onclick="openModalDespesa()">+ Nova Despesa</button></div>
+    <div class="card"><div class="card-title">Despesas Cadastradas</div><div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>Data Lanç.</th><th>Conta</th><th>Categoria</th><th>Fornecedor</th><th>Descrição</th><th>Parcelas</th><th>Total</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-despesas"><tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px">Carregando...</td></tr></tbody>
+    </table></div></div></div>
+    <div id="modal-despesa" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-despesa')">
+      <div class="modal modal-lg"><div class="modal-header"><h2>❤️ Nova Despesa</h2><button class="modal-close" onclick="closeModal('modal-despesa')">✕</button></div>
+      <div class="modal-body">
+        <div class="form-row cols-3">
+          <div class="form-group"><label class="form-label">Conta *</label><select class="form-control" id="desp-conta">${contas.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Categoria *</label><select class="form-control" id="desp-cat">${cats.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Fornecedor</label><select class="form-control" id="desp-forn">${fornecedores.filter(f=>f.ativo).map(f=>`<option value="${f.id}">${f.nome}</option>`).join('')}</select></div>
+        </div>
+        <div class="form-row cols-2">
+          <div class="form-group"><label class="form-label">Forma Pagamento *</label><select class="form-control" id="desp-forma">${formas.filter(f=>f.ativo).map(f=>`<option value="${f.id}">${f.nome}</option>`).join('')}</select></div>
+          <div class="form-group"><label class="form-label">Nº Documento</label><input type="text" class="form-control" id="desp-doc"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Descrição</label><input type="text" class="form-control" id="desp-descricao"></div>
+        <div class="form-row cols-4">
+          <div class="form-group"><label class="form-label">Data 1ª Parcela *</label><input type="date" class="form-control" id="desp-data1" value="${today()}"></div>
+          <div class="form-group"><label class="form-label">Valor Parcela *</label><input type="number" step="0.01" class="form-control" id="desp-valor"></div>
+          <div class="form-group"><label class="form-label">Qtde Parcelas *</label><input type="number" class="form-control" id="desp-qtde" value="1" min="1"></div>
+          <div class="form-group"><label class="form-label">Valor Total</label><input type="text" class="form-control" id="desp-total" readonly></div>
+        </div>
+        <button class="btn btn-danger" onclick="gerarParcelasDespesa()" style="margin-bottom:16px">🔄 Gerar Parcelas</button>
+        <div id="desp-parcelas-section" style="display:none">
+          <div class="card-title" style="margin-bottom:8px">Parcelas Geradas</div>
+          <div class="table-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Quitado?</th></tr></thead><tbody id="tbody-parcelas-desp"></tbody></table></div>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-despesa')">Cancelar</button><button class="btn btn-danger" onclick="salvarDespesa()">💾 Salvar Despesa</button></div>
+    </div></div>`;
+  loadDespesasList();
+  ['desp-valor','desp-qtde'].forEach(id=>{document.getElementById(id)?.addEventListener('input',()=>{const v=parseFloat(document.getElementById('desp-valor').value)||0;const q=parseInt(document.getElementById('desp-qtde').value)||1;document.getElementById('desp-total').value=formatCurrency(v*q);});});
+}
+
+let parcelasDespesaTemp=[];
+
+function gerarParcelasDespesa() {
+  const data1=document.getElementById('desp-data1').value; const valor=parseFloat(document.getElementById('desp-valor').value)||0; const qtde=parseInt(document.getElementById('desp-qtde').value)||1;
+  if(!data1||valor<=0){toast('Preencha data e valor!','error');return;}
+  parcelasDespesaTemp=[];
+  for(let i=0;i<qtde;i++) parcelasDespesaTemp.push({numero:i+1,total:qtde,vencimento:addMonths(data1,i),valor,quitado:false,dt_pagamento:null,valor_pago:0});
+  document.getElementById('tbody-parcelas-desp').innerHTML=parcelasDespesaTemp.map((p,i)=>`<tr><td>${p.numero}/${p.total}</td><td>${formatDate(p.vencimento)}</td><td class="td-mono col-red">${formatCurrency(p.valor)}</td><td><input type="checkbox" onchange="parcelasDespesaTemp[${i}].quitado=this.checked"></td></tr>`).join('');
+  document.getElementById('desp-parcelas-section').style.display='block';
+  document.getElementById('desp-total').value=formatCurrency(valor*qtde);
+  toast(`${qtde} parcela(s) gerada(s)!`,'success');
+}
+
+async function salvarDespesa() {
+  if(parcelasDespesaTemp.length===0){toast('Gere as parcelas primeiro!','error');return;}
+  const valor=parseFloat(document.getElementById('desp-valor').value)||0; const qtde=parseInt(document.getElementById('desp-qtde').value)||1;
+  if(valor<=0){toast('Preencha o valor!','error');return;}
+  const [cats,contas,forns,formas]=await Promise.all([dbGet('categorias_despesa'),dbGet('contas'),dbGet('fornecedores'),dbGet('formas_pagamento')]);
+  const catId=parseInt(document.getElementById('desp-cat').value); const contaId=parseInt(document.getElementById('desp-conta').value);
+  const fornId=parseInt(document.getElementById('desp-forn').value); const formaId=parseInt(document.getElementById('desp-forma').value);
+  const cat=cats.find(c=>c.id===catId); const conta=contas.find(c=>c.id===contaId);
+  const forn=forns.find(f=>f.id===fornId); const forma=formas.find(f=>f.id===formaId);
+  const despId=await dbAdd('despesas',{data_lancamento:today(),data_emissao:today(),conta_id:contaId,conta_nome:conta?.nome,cat_id:catId,cat_nome:cat?.nome,subcat:cat?.subcategoria,forn_id:fornId,forn_nome:forn?.nome,forma_id:formaId,forma_nome:forma?.nome,descricao:document.getElementById('desp-descricao').value,doc:document.getElementById('desp-doc').value,data_primeira:document.getElementById('desp-data1').value,valor_parcela:valor,qtde_parcelas:qtde,valor_total:valor*qtde,quitado:parcelasDespesaTemp.every(p=>p.quitado)});
+  for(const p of parcelasDespesaTemp) await dbAdd('parcelas_despesa',{despesa_id:despId,numero:p.numero,total:p.total,vencimento:p.vencimento,valor:p.valor,forma_id:formaId,forma_nome:forma?.nome,conta_id:contaId,conta_nome:conta?.nome,cat_nome:cat?.nome,subcat:cat?.subcategoria,forn_nome:forn?.nome,descricao:document.getElementById('desp-descricao').value,dt_pagamento:p.quitado?today():null,valor_pago:p.quitado?p.valor:0,categoria:cat?.nome});
+  parcelasDespesaTemp=[];
+  closeModal('modal-despesa');
+  toast('Despesa salva!','success');
+  loadDespesasList();
+}
+
+async function loadDespesasList() {
+  const despesas=await dbGet('despesas'); const tbody=document.getElementById('tbody-despesas'); if(!tbody)return;
+  if(despesas.length===0){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px">Nenhuma despesa lançada</td></tr>';return;}
+  tbody.innerHTML=despesas.slice().reverse().map(d=>`<tr><td>${d.id}</td><td>${formatDate(d.data_lancamento)}</td><td>${d.conta_nome}</td><td><span class="badge badge-red">${d.cat_nome}</span></td><td>${d.forn_nome}</td><td style="color:var(--text-secondary)">${d.descricao||'-'}</td><td>${d.qtde_parcelas}x</td><td class="td-mono col-red">${formatCurrency(d.valor_total)}</td><td><div class="action-btns"><button class="btn-icon btn-icon-red" onclick="excluirDespesa(${d.id})">🗑️</button></div></td></tr>`).join('');
+}
+
+async function excluirDespesa(id) {
+  if(!(await confirmDialog('Excluir esta despesa?')))return;
+  await dbDelete('despesas',id); toast('Despesa excluída!','success'); loadDespesasList();
+}
+
+function openModalDespesa() {
+  parcelasDespesaTemp=[];
+  ['desp-descricao','desp-doc','desp-valor'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('desp-data1').value=today(); document.getElementById('desp-qtde').value='1'; document.getElementById('desp-total').value='';
+  document.getElementById('desp-parcelas-section').style.display='none';
+  openModal('modal-despesa');
+}
+
+
+// ══════════════════════════════════════════
+// CONTAS A RECEBER / PAGAR / EXTRATO / TRANSF
+// ══════════════════════════════════════════
+async function renderContasReceber(container) {
+  const parcelas=await dbGet('parcelas_receita');
+  const pendentes=parcelas.filter(p=>!p.dt_pagamento); const recebidas=parcelas.filter(p=>!!p.dt_pagamento);
+  const vencidas=pendentes.filter(p=>p.vencimento<today()); const totalPendente=pendentes.reduce((s,p)=>s+(parseFloat(p.valor)||0),0);
+  const totalRecebido=recebidas.reduce((s,p)=>s+(parseFloat(p.valor_pago)||0),0); const totalVencido=vencidas.reduce((s,p)=>s+(parseFloat(p.valor)||0),0);
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-title">📥 Contas a Receber</div>
+    <div class="summary-bar">
+      <div class="summary-item"><div class="label">Vencido</div><div class="val col-red">${formatCurrency(totalVencido)}</div></div>
+      <div class="summary-item"><div class="label">A Receber</div><div class="val col-yellow">${formatCurrency(totalPendente)}</div></div>
+      <div class="summary-item"><div class="label">Recebido</div><div class="val col-green">${formatCurrency(totalRecebido)}</div></div>
+      <div class="summary-item"><div class="label">Qtde Pendente</div><div class="val col-blue">${pendentes.length}</div></div>
+    </div>
+    <div class="split-panel">
+      <div>
+        <div class="panel-header panel-despesa">⏳ A RECEBER (${pendentes.length})</div>
+        <div class="panel-body"><div class="table-wrap"><table>
+          <thead><tr><th>Tipo</th><th>Cliente</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Quitar</th></tr></thead>
+          <tbody>${pendentes.length===0?'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma pendente</td></tr>':
+          pendentes.slice().sort((a,b)=>a.vencimento>b.vencimento?1:-1).map(p=>`<tr><td>${p.tipo_nome||p.categoria||'-'}</td><td>${p.cliente_nome||'-'}</td><td>${p.numero}/${p.total}</td><td>${formatDate(p.vencimento)}</td><td class="td-mono col-green">${formatCurrency(p.valor)}</td><td><span class="badge ${p.vencimento<today()?'badge-red':'badge-yellow'}">${p.vencimento<today()?'VENCIDO':'A VENCER'}</span></td><td><button class="btn btn-success btn-sm" onclick="quitarParcelaReceita(${p.id})">✅ Receber</button></td></tr>`).join('')}
+          </tbody>
+        </table></div></div>
+      </div>
+      <div>
+        <div class="panel-header panel-receita">✅ RECEBIDAS (${recebidas.length})</div>
+        <div class="panel-body"><div class="table-wrap"><table>
+          <thead><tr><th>Tipo</th><th>Cliente</th><th>Parcela</th><th>Pgto</th><th>Valor</th></tr></thead>
+          <tbody>${recebidas.length===0?'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma</td></tr>':
+          recebidas.slice().sort((a,b)=>b.dt_pagamento>a.dt_pagamento?1:-1).slice(0,50).map(p=>`<tr><td>${p.tipo_nome||p.categoria||'-'}</td><td>${p.cliente_nome||'-'}</td><td>${p.numero}/${p.total}</td><td>${formatDate(p.dt_pagamento)}</td><td class="td-mono col-green">${formatCurrency(p.valor_pago)}</td></tr>`).join('')}
+          </tbody>
+        </table></div></div>
+      </div>
+    </div>
+  </div>
+  <div id="modal-quitar-rec" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-quitar-rec')">
+    <div class="modal" style="max-width:450px"><div class="modal-header"><h2>✅ Receber Parcela</h2><button class="modal-close" onclick="closeModal('modal-quitar-rec')">✕</button></div>
+    <div class="modal-body"><input type="hidden" id="quitar-rec-id">
+      <div class="form-group"><label class="form-label">Data de Recebimento</label><input type="date" class="form-control" id="quitar-rec-data" value="${today()}"></div>
+      <div class="form-group"><label class="form-label">Valor Recebido</label><input type="number" step="0.01" class="form-control" id="quitar-rec-valor"></div>
+      <div class="form-group"><label class="form-label">Forma Pagamento</label><select class="form-control" id="quitar-rec-forma"></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-quitar-rec')">Cancelar</button><button class="btn btn-success" onclick="confirmarQuitarReceita()">✅ Confirmar</button></div>
+    </div>
+  </div>`;
+}
+
+async function quitarParcelaReceita(id) {
+  const parcela=await dbGet('parcelas_receita',id); if(!parcela)return;
+  const formas=await dbGet('formas_pagamento');
+  document.getElementById('quitar-rec-id').value=id; document.getElementById('quitar-rec-data').value=today(); document.getElementById('quitar-rec-valor').value=parcela.valor;
+  document.getElementById('quitar-rec-forma').innerHTML=formas.map(f=>`<option value="${f.id}" ${f.id==parcela.forma_id?'selected':''}>${f.nome}</option>`).join('');
+  openModal('modal-quitar-rec');
+}
+
+async function confirmarQuitarReceita() {
+  const id=parseInt(document.getElementById('quitar-rec-id').value); const data=document.getElementById('quitar-rec-data').value; const valor=parseFloat(document.getElementById('quitar-rec-valor').value);
+  if(!data||!valor){toast('Preencha data e valor!','error');return;}
+  const parcela=await dbGet('parcelas_receita',id);
+  await dbPut('parcelas_receita',{...parcela,dt_pagamento:data,valor_pago:valor});
+  closeModal('modal-quitar-rec'); toast('Parcela recebida!','success');
+  renderContasReceber(document.getElementById('content'));
+}
+
+async function renderContasPagar(container) {
+  const parcelas=await dbGet('parcelas_despesa');
+  const pendentes=parcelas.filter(p=>!p.dt_pagamento); const pagas=parcelas.filter(p=>!!p.dt_pagamento);
+  const vencidas=pendentes.filter(p=>p.vencimento<today());
+  const totalPendente=pendentes.reduce((s,p)=>s+(parseFloat(p.valor)||0),0); const totalPago=pagas.reduce((s,p)=>s+(parseFloat(p.valor_pago)||0),0); const totalVencido=vencidas.reduce((s,p)=>s+(parseFloat(p.valor)||0),0);
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-title">📤 Contas a Pagar</div>
+    <div class="summary-bar">
+      <div class="summary-item"><div class="label">Vencido</div><div class="val col-red">${formatCurrency(totalVencido)}</div></div>
+      <div class="summary-item"><div class="label">A Pagar</div><div class="val col-yellow">${formatCurrency(totalPendente)}</div></div>
+      <div class="summary-item"><div class="label">Pago</div><div class="val col-green">${formatCurrency(totalPago)}</div></div>
+      <div class="summary-item"><div class="label">Qtde Pendente</div><div class="val col-blue">${pendentes.length}</div></div>
+    </div>
+    <div class="split-panel">
+      <div>
+        <div class="panel-header panel-despesa">💸 A PAGAR (${pendentes.length})</div>
+        <div class="panel-body"><div class="table-wrap"><table>
+          <thead><tr><th>Categoria</th><th>Fornecedor</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Quitar</th></tr></thead>
+          <tbody>${pendentes.length===0?'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Tudo em dia! ✅</td></tr>':
+          pendentes.slice().sort((a,b)=>a.vencimento>b.vencimento?1:-1).map(p=>`<tr><td>${p.cat_nome||p.categoria||'-'}</td><td>${p.forn_nome||'-'}</td><td>${p.numero}/${p.total}</td><td>${formatDate(p.vencimento)}</td><td class="td-mono col-red">${formatCurrency(p.valor)}</td><td><span class="badge ${p.vencimento<today()?'badge-red':'badge-yellow'}">${p.vencimento<today()?'VENCIDO':'A VENCER'}</span></td><td><button class="btn btn-warning btn-sm" onclick="quitarParcelaDespesa(${p.id})">💰 Pagar</button></td></tr>`).join('')}
+          </tbody>
+        </table></div></div>
+      </div>
+      <div>
+        <div class="panel-header panel-receita">✅ PAGAS (${pagas.length})</div>
+        <div class="panel-body"><div class="table-wrap"><table>
+          <thead><tr><th>Categoria</th><th>Fornecedor</th><th>Parcela</th><th>Pgto</th><th>Valor</th></tr></thead>
+          <tbody>${pagas.length===0?'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhuma</td></tr>':
+          pagas.slice().sort((a,b)=>b.dt_pagamento>a.dt_pagamento?1:-1).slice(0,50).map(p=>`<tr><td>${p.cat_nome||p.categoria||'-'}</td><td>${p.forn_nome||'-'}</td><td>${p.numero}/${p.total}</td><td>${formatDate(p.dt_pagamento)}</td><td class="td-mono col-green">${formatCurrency(p.valor_pago)}</td></tr>`).join('')}
+          </tbody>
+        </table></div></div>
+      </div>
+    </div>
+  </div>
+  <div id="modal-quitar-desp" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-quitar-desp')">
+    <div class="modal" style="max-width:450px"><div class="modal-header"><h2>💰 Pagar Parcela</h2><button class="modal-close" onclick="closeModal('modal-quitar-desp')">✕</button></div>
+    <div class="modal-body"><input type="hidden" id="quitar-desp-id">
+      <div class="form-group"><label class="form-label">Data Pagamento</label><input type="date" class="form-control" id="quitar-desp-data" value="${today()}"></div>
+      <div class="form-group"><label class="form-label">Valor Pago</label><input type="number" step="0.01" class="form-control" id="quitar-desp-valor"></div>
+      <div class="form-group"><label class="form-label">Forma Pagamento</label><select class="form-control" id="quitar-desp-forma"></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-quitar-desp')">Cancelar</button><button class="btn btn-warning" onclick="confirmarQuitarDespesa()">💰 Confirmar</button></div>
+    </div>
+  </div>`;
+}
+
+async function quitarParcelaDespesa(id) {
+  const parcela=await dbGet('parcelas_despesa',id); if(!parcela)return;
+  const formas=await dbGet('formas_pagamento');
+  document.getElementById('quitar-desp-id').value=id; document.getElementById('quitar-desp-data').value=today(); document.getElementById('quitar-desp-valor').value=parcela.valor;
+  document.getElementById('quitar-desp-forma').innerHTML=formas.map(f=>`<option value="${f.id}" ${f.id==parcela.forma_id?'selected':''}>${f.nome}</option>`).join('');
+  openModal('modal-quitar-desp');
+}
+
+async function confirmarQuitarDespesa() {
+  const id=parseInt(document.getElementById('quitar-desp-id').value); const data=document.getElementById('quitar-desp-data').value; const valor=parseFloat(document.getElementById('quitar-desp-valor').value);
+  if(!data||!valor){toast('Preencha data e valor!','error');return;}
+  const parcela=await dbGet('parcelas_despesa',id);
+  await dbPut('parcelas_despesa',{...parcela,dt_pagamento:data,valor_pago:valor});
+  closeModal('modal-quitar-desp'); toast('Despesa paga!','success');
+  renderContasPagar(document.getElementById('content'));
+}
+
+async function renderExtrato(container) {
+  const [parcRec,parcDesp]=await Promise.all([dbGet('parcelas_receita'),dbGet('parcelas_despesa')]);
+  const anos=[...new Set([...parcRec,...parcDesp].map(p=>p.dt_pagamento?.slice(0,4)).filter(Boolean))].sort().reverse();
+  const recFilt=parcRec.filter(p=>!!p.dt_pagamento); const despFilt=parcDesp.filter(p=>!!p.dt_pagamento);
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-title">📋 Extrato Comparativo — Receitas × Despesas</div>
+    <div class="filters-bar">
+      <div class="form-group"><label class="form-label">Ano</label><select class="form-control" id="ext-ano" style="width:100px"><option value="">Todos</option>${anos.map(a=>`<option value="${a}">${a}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Mês</label><select class="form-control" id="ext-mes" style="width:130px"><option value="">Todos</option>${['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,i)=>`<option value="${m}">${['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][i]}</option>`).join('')}</select></div>
+      <button class="btn btn-primary" onclick="aplicarFiltroExtrato()">🔍 Filtrar</button>
+    </div>
+    <div id="extrato-content">${buildExtratoHTML(recFilt,despFilt)}</div>
+  </div>`;
+}
+
+function buildExtratoHTML(r,d) {
+  const tr=r.reduce((s,p)=>s+(parseFloat(p.valor_pago)||0),0); const td=d.reduce((s,p)=>s+(parseFloat(p.valor_pago)||0),0); const saldo=tr-td;
+  return `<div class="split-panel">
+    <div><div class="panel-header panel-receita">💚 RECEITAS (${r.length})</div><div class="panel-body"><div class="table-wrap"><table>
+      <thead><tr><th>Tipo</th><th>Vencimento</th><th>Valor</th><th>Pgto</th></tr></thead>
+      <tbody>${r.length===0?'<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-muted)">Sem dados</td></tr>':r.map(p=>`<tr><td>${p.tipo_nome||p.categoria||'-'}</td><td>${formatDate(p.vencimento)}</td><td class="td-mono col-green">${formatCurrency(p.valor_pago)}</td><td>${formatDate(p.dt_pagamento)}</td></tr>`).join('')}</tbody>
+    </table></div></div></div>
+    <div><div class="panel-header panel-despesa">❤️ DESPESAS (${d.length})</div><div class="panel-body"><div class="table-wrap"><table>
+      <thead><tr><th>Tipo</th><th>Vencimento</th><th>Valor</th><th>Pgto</th></tr></thead>
+      <tbody>${d.length===0?'<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-muted)">Sem dados</td></tr>':d.map(p=>`<tr><td>${p.cat_nome||p.categoria||'-'}</td><td>${formatDate(p.vencimento)}</td><td class="td-mono col-red">${formatCurrency(p.valor_pago)}</td><td>${formatDate(p.dt_pagamento)}</td></tr>`).join('')}</tbody>
+    </table></div></div></div>
+  </div>
+  <div class="summary-bar" style="margin-top:8px">
+    <div class="summary-item"><div class="label">Total Receita</div><div class="val col-green">${formatCurrency(tr)}</div></div>
+    <div class="summary-item"><div class="label">Total Despesa</div><div class="val col-red">${formatCurrency(td)}</div></div>
+    <div class="summary-item"><div class="label">Saldo</div><div class="val ${saldo>=0?'col-green':'col-red'}">${formatCurrency(saldo)}</div></div>
+  </div>`;
+}
+
+async function aplicarFiltroExtrato() {
+  const ano=document.getElementById('ext-ano').value; const mes=document.getElementById('ext-mes').value;
+  let [r,d]=await Promise.all([dbGet('parcelas_receita'),dbGet('parcelas_despesa')]);
+  r=r.filter(p=>!!p.dt_pagamento); d=d.filter(p=>!!p.dt_pagamento);
+  if(ano){r=r.filter(p=>p.dt_pagamento?.startsWith(ano));d=d.filter(p=>p.dt_pagamento?.startsWith(ano));}
+  if(mes){r=r.filter(p=>p.dt_pagamento?.slice(5,7)===mes);d=d.filter(p=>p.dt_pagamento?.slice(5,7)===mes);}
+  document.getElementById('extrato-content').innerHTML=buildExtratoHTML(r,d);
+}
+
+async function renderTransferencias(container) {
+  const [transferencias,contas]=await Promise.all([dbGet('transferencias'),dbGet('contas')]);
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-header"><div class="section-title">🔄 Transferências entre Contas</div><button class="btn btn-primary" onclick="openModalTransf()">+ Nova Transferência</button></div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Data</th><th>Origem</th><th>Destino</th><th>Valor</th><th>Descrição</th><th>Ações</th></tr></thead>
+      <tbody>${transferencias.length===0?'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhuma transferência</td></tr>':
+      transferencias.slice().reverse().map(t=>`<tr><td>${formatDate(t.data)}</td><td>${t.conta_origem_nome}</td><td>${t.conta_destino_nome}</td><td class="td-mono col-blue">${formatCurrency(t.valor)}</td><td>${t.descricao||'-'}</td><td><button class="btn-icon btn-icon-red" onclick="excluirTransf(${t.id})">🗑️</button></td></tr>`).join('')}
+      </tbody>
+    </table></div></div>
+  </div>
+  <div id="modal-transf" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-transf')">
+    <div class="modal" style="max-width:450px"><div class="modal-header"><h2>🔄 Nova Transferência</h2><button class="modal-close" onclick="closeModal('modal-transf')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-control" id="transf-data" value="${today()}"></div>
+      <div class="form-group"><label class="form-label">Conta Origem *</label><select class="form-control" id="transf-origem">${contas.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Conta Destino *</label><select class="form-control" id="transf-destino">${contas.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Valor *</label><input type="number" step="0.01" class="form-control" id="transf-valor"></div>
+      <div class="form-group"><label class="form-label">Descrição</label><input type="text" class="form-control" id="transf-desc"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-transf')">Cancelar</button><button class="btn btn-primary" onclick="salvarTransf()">💾 Salvar</button></div>
+    </div>
+  </div>`;
+}
+
+function openModalTransf(){openModal('modal-transf');}
+async function salvarTransf() {
+  const data=document.getElementById('transf-data').value; const origemId=parseInt(document.getElementById('transf-origem').value);
+  const destinoId=parseInt(document.getElementById('transf-destino').value); const valor=parseFloat(document.getElementById('transf-valor').value);
+  if(!data||!valor||origemId===destinoId){toast('Verifique os campos!','error');return;}
+  const contas=await dbGet('contas'); const origem=contas.find(c=>c.id===origemId); const destino=contas.find(c=>c.id===destinoId);
+  await dbAdd('transferencias',{data,conta_origem_id:origemId,conta_origem_nome:origem?.nome,conta_destino_id:destinoId,conta_destino_nome:destino?.nome,valor,descricao:document.getElementById('transf-desc').value});
+  closeModal('modal-transf'); toast('Transferência salva!','success');
+  renderTransferencias(document.getElementById('content'));
+}
+async function excluirTransf(id){if(!(await confirmDialog('Excluir?')))return;await dbDelete('transferencias',id);renderTransferencias(document.getElementById('content'));}
+
+
+// ══════════════════════════════════════════
+// EXTRAS: RELATÓRIOS, GRÁFICOS, POUPANÇA, CARTÃO, CONCILIAÇÃO
+// ══════════════════════════════════════════
+async function renderRelatorios(container) {
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-title">📑 Relatórios</div>
+    <div class="grid-3">${[
+      {icon:'💚',title:'Receitas por Período',btn:'relRecPeriodo'},
+      {icon:'📊',title:'Receita × Despesa',btn:'relRecDesp'},
+      {icon:'👤',title:'Receitas por Cliente',btn:'relRecCliente'},
+      {icon:'❤️',title:'Despesas por Período',btn:'relDespPeriodo'},
+      {icon:'🏷️',title:'Despesas por Categoria',btn:'relDespCat'},
+      {icon:'🏭',title:'Despesas por Fornecedor',btn:'relDespForn'},
+    ].map(r=>`<div class="card" style="cursor:pointer" onclick="${r.btn}()"><div style="font-size:32px;margin-bottom:12px">${r.icon}</div><div style="font-weight:700;margin-bottom:16px">${r.title}</div><button class="btn btn-primary btn-sm">📄 Gerar</button></div>`).join('')}
+    </div>
+  </div>
+  <div id="modal-rel-filter" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-rel-filter')">
+    <div class="modal" style="max-width:450px"><div class="modal-header"><h2 id="rel-title">Relatório</h2><button class="modal-close" onclick="closeModal('modal-rel-filter')">✕</button></div>
+    <div class="modal-body" id="rel-filter-body"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-rel-filter')">Cancelar</button><button class="btn btn-primary" id="btn-gerar-rel">🖨️ Gerar</button></div>
+    </div>
+  </div>`;
+}
+
+function relFilterDatas(title, cb) {
+  document.getElementById('rel-title').textContent=title;
+  document.getElementById('rel-filter-body').innerHTML=`<div class="form-row cols-2"><div class="form-group"><label class="form-label">Data Inicial</label><input type="date" class="form-control" id="rel-di" value="${today().slice(0,7)+'-01'}"></div><div class="form-group"><label class="form-label">Data Final</label><input type="date" class="form-control" id="rel-df" value="${today()}"></div></div>`;
+  document.getElementById('btn-gerar-rel').onclick=()=>cb(document.getElementById('rel-di').value,document.getElementById('rel-df').value);
+  openModal('modal-rel-filter');
+}
+
+async function relRecPeriodo(){relFilterDatas('💚 Receitas por Período',async(di,df)=>{let data=await dbGet('parcelas_receita');data=data.filter(p=>(p.vencimento||p.dt_pagamento)>=di&&(p.vencimento||p.dt_pagamento)<=df);const total=data.reduce((s,p)=>s+(parseFloat(p.valor_pago)||parseFloat(p.valor)||0),0);printSection(`<table><thead><tr><th>Tipo</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Data Pgto</th><th>Status</th></tr></thead><tbody>${data.map(p=>`<tr><td>${p.tipo_nome||p.categoria||'-'}</td><td>${p.numero}/${p.total}</td><td>${formatDate(p.vencimento)}</td><td>R$ ${(parseFloat(p.valor)||0).toFixed(2)}</td><td>${p.dt_pagamento?formatDate(p.dt_pagamento):'-'}</td><td>${p.dt_pagamento?'RECEBIDO':p.vencimento<today()?'VENCIDO':'A RECEBER'}</td></tr>`).join('')}<tr class="total"><td colspan="3"><b>TOTAL</b></td><td colspan="3" class="green"><b>R$ ${total.toFixed(2)}</b></td></tr></tbody></table>`,`Receitas por Período — ${di} a ${df}`);})}
+async function relDespPeriodo(){relFilterDatas('❤️ Despesas por Período',async(di,df)=>{let data=await dbGet('parcelas_despesa');data=data.filter(p=>(p.vencimento||p.dt_pagamento)>=di&&(p.vencimento||p.dt_pagamento)<=df);const total=data.reduce((s,p)=>s+(parseFloat(p.valor_pago)||parseFloat(p.valor)||0),0);printSection(`<table><thead><tr><th>Tipo</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Data Pgto</th><th>Status</th></tr></thead><tbody>${data.map(p=>`<tr><td>${p.cat_nome||'-'}</td><td>${p.numero}/${p.total}</td><td>${formatDate(p.vencimento)}</td><td>R$ ${(parseFloat(p.valor)||0).toFixed(2)}</td><td>${p.dt_pagamento?formatDate(p.dt_pagamento):'-'}</td><td>${p.dt_pagamento?'PAGO':p.vencimento<today()?'VENCIDO':'A PAGAR'}</td></tr>`).join('')}<tr class="total"><td colspan="3"><b>TOTAL</b></td><td colspan="3" class="red"><b>R$ ${total.toFixed(2)}</b></td></tr></tbody></table>`,`Despesas por Período — ${di} a ${df}`);})}
+async function relRecDesp(){relFilterDatas('📊 Receita × Despesa',async(di,df)=>{const pr=(await dbGet('parcelas_receita')).filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);const pd=(await dbGet('parcelas_despesa')).filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);const tr=pr.reduce((s,p)=>s+(parseFloat(p.valor_pago)||0),0);const td=pd.reduce((s,p)=>s+(parseFloat(p.valor_pago)||0),0);printSection(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div><h3>RECEITAS</h3><table><thead><tr><th>Tipo</th><th>Data</th><th>Valor</th></tr></thead><tbody>${pr.map(p=>`<tr><td>${p.tipo_nome||'-'}</td><td>${formatDate(p.dt_pagamento)}</td><td class="green">R$ ${(parseFloat(p.valor_pago)||0).toFixed(2)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="2"><b>Total</b></td><td class="green"><b>R$ ${tr.toFixed(2)}</b></td></tr></tfoot></table></div><div><h3>DESPESAS</h3><table><thead><tr><th>Tipo</th><th>Data</th><th>Valor</th></tr></thead><tbody>${pd.map(p=>`<tr><td>${p.cat_nome||'-'}</td><td>${formatDate(p.dt_pagamento)}</td><td class="red">R$ ${(parseFloat(p.valor_pago)||0).toFixed(2)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="2"><b>Total</b></td><td class="red"><b>R$ ${td.toFixed(2)}</b></td></tr></tfoot></table></div></div><p><b>Saldo: R$ ${(tr-td).toFixed(2)}</b></p>`,`Receita × Despesa — ${di} a ${df}`);})}
+async function relRecCliente(){relFilterDatas('👤 Receitas por Cliente',async(di,df)=>{const pr=(await dbGet('parcelas_receita')).filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);const ag={};for(const p of pr){const k=p.cliente_nome||'Padrão';ag[k]=(ag[k]||0)+(parseFloat(p.valor_pago)||0);}const sorted=Object.entries(ag).sort((a,b)=>b[1]-a[1]);const total=sorted.reduce((s,[,v])=>s+v,0);printSection(`<table><thead><tr><th>Cliente</th><th>Total</th><th>%</th></tr></thead><tbody>${sorted.map(([c,v])=>`<tr><td>${c}</td><td class="green">R$ ${v.toFixed(2)}</td><td>${(v/total*100).toFixed(1)}%</td></tr>`).join('')}</tbody></table>`,`Receitas por Cliente`);})}
+async function relDespCat(){relFilterDatas('🏷️ Despesas por Categoria',async(di,df)=>{const pd=(await dbGet('parcelas_despesa')).filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);const ag={};for(const p of pd){const k=p.cat_nome||'Outros';ag[k]=(ag[k]||0)+(parseFloat(p.valor_pago)||0);}const sorted=Object.entries(ag).sort((a,b)=>b[1]-a[1]);const total=sorted.reduce((s,[,v])=>s+v,0);printSection(`<table><thead><tr><th>Categoria</th><th>Total</th><th>%</th></tr></thead><tbody>${sorted.map(([c,v])=>`<tr><td>${c}</td><td class="red">R$ ${v.toFixed(2)}</td><td>${(v/total*100).toFixed(1)}%</td></tr>`).join('')}</tbody></table>`,`Despesas por Categoria`);})}
+async function relDespForn(){relFilterDatas('🏭 Despesas por Fornecedor',async(di,df)=>{const pd=(await dbGet('parcelas_despesa')).filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);const ag={};for(const p of pd){const k=p.forn_nome||'Padrão';ag[k]=(ag[k]||0)+(parseFloat(p.valor_pago)||0);}const sorted=Object.entries(ag).sort((a,b)=>b[1]-a[1]);const total=sorted.reduce((s,[,v])=>s+v,0);printSection(`<table><thead><tr><th>Fornecedor</th><th>Total</th><th>%</th></tr></thead><tbody>${sorted.map(([f,v])=>`<tr><td>${f}</td><td class="red">R$ ${v.toFixed(2)}</td><td>${(v/total*100).toFixed(1)}%</td></tr>`).join('')}</tbody></table>`,`Despesas por Fornecedor`);})}
+
+async function renderGraficos(container) {
+  const now=new Date(); const [parcRec,parcDesp]=await Promise.all([dbGet('parcelas_receita'),dbGet('parcelas_despesa')]);
+  const year=now.getFullYear(); const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:20px"><div class="section-title">📈 Gráficos</div><div class="grid-2">
+    <div class="card"><div class="card-title">🍕 Despesas por Categoria (Mês)</div><canvas id="g-desp-cat" height="220"></canvas></div>
+    <div class="card"><div class="card-title">🍕 Receitas por Tipo (Mês)</div><canvas id="g-rec-tipo" height="220"></canvas></div>
+    <div class="card"><div class="card-title">📊 Receitas × Despesas (${year})</div><canvas id="g-anual" height="220"></canvas></div>
+    <div class="card"><div class="card-title">📈 Fluxo Acumulado (${year})</div><canvas id="g-fluxo" height="220"></canvas></div>
+  </div></div>`;
+  if(typeof Chart==='undefined'){const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';s.onload=()=>buildGraficos(parcRec,parcDesp,year,meses);document.head.appendChild(s);}else{buildGraficos(parcRec,parcDesp,year,meses);}
+}
+
+function buildGraficos(parcRec,parcDesp,year,meses) {
+  const now=new Date();const m=String(now.getMonth()+1).padStart(2,'0');const colors=['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6','#06b6d4','#f97316','#84cc16'];
+  const despMes=parcDesp.filter(p=>p.dt_pagamento?.startsWith(`${year}-${m}`));const despCat={};for(const p of despMes){despCat[p.categoria||'Outros']=(despCat[p.categoria||'Outros']||0)+(parseFloat(p.valor_pago)||0);}
+  if(Object.keys(despCat).length>0)new Chart(document.getElementById('g-desp-cat'),{type:'pie',data:{labels:Object.keys(despCat),datasets:[{data:Object.values(despCat),backgroundColor:colors,borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{color:'#8892a4',font:{size:11}}}}}});
+  const recMes=parcRec.filter(p=>p.dt_pagamento?.startsWith(`${year}-${m}`));const recTipo={};for(const p of recMes){recTipo[p.tipo_nome||'Outros']=(recTipo[p.tipo_nome||'Outros']||0)+(parseFloat(p.valor_pago)||0);}
+  if(Object.keys(recTipo).length>0)new Chart(document.getElementById('g-rec-tipo'),{type:'pie',data:{labels:Object.keys(recTipo),datasets:[{data:Object.values(recTipo),backgroundColor:colors,borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{color:'#8892a4',font:{size:11}}}}}});
+  const recAnual=meses.map((_,i)=>{const mm=String(i+1).padStart(2,'0');return parcRec.filter(p=>p.dt_pagamento?.startsWith(`${year}-${mm}`)).reduce((s,p)=>s+(parseFloat(p.valor_pago)||0),0);});
+  const despAnual=meses.map((_,i)=>{const mm=String(i+1).padStart(2,'0');return parcDesp.filter(p=>p.dt_pagamento?.startsWith(`${year}-${mm}`)).reduce((s,p)=>s+(parseFloat(p.valor_pago)||0),0);});
+  new Chart(document.getElementById('g-anual'),{type:'bar',data:{labels:meses,datasets:[{label:'Receita',data:recAnual,backgroundColor:'rgba(16,185,129,0.7)',borderRadius:4},{label:'Despesa',data:despAnual,backgroundColor:'rgba(239,68,68,0.7)',borderRadius:4}]},options:{responsive:true,scales:{x:{ticks:{color:'#8892a4'},grid:{color:'#2a3348'}},y:{ticks:{color:'#8892a4'},grid:{color:'#2a3348'}}},plugins:{legend:{labels:{color:'#8892a4'}}}}});
+  let acc=0;const fluxo=recAnual.map((r,i)=>{acc+=r-despAnual[i];return acc;});
+  new Chart(document.getElementById('g-fluxo'),{type:'line',data:{labels:meses,datasets:[{label:'Saldo Acumulado',data:fluxo,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',fill:true,tension:0.4,borderWidth:2}]},options:{responsive:true,scales:{x:{ticks:{color:'#8892a4'},grid:{color:'#2a3348'}},y:{ticks:{color:'#8892a4'},grid:{color:'#2a3348'}}},plugins:{legend:{labels:{color:'#8892a4'}}}}});
+}
+
+async function renderPoupanca(container) {
+  const movs=await dbGet('poupanca');
+  const creditos=movs.filter(m=>m.tipo==='CREDITO').reduce((s,m)=>s+(parseFloat(m.valor)||0),0);
+  const debitos=movs.filter(m=>m.tipo==='DEBITO').reduce((s,m)=>s+(parseFloat(m.valor)||0),0);
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-header"><div class="section-title">🏦 Poupança</div><button class="btn btn-primary" onclick="openModal('modal-poupanca')">+ Novo Lançamento</button></div>
+    <div class="grid-3">
+      <div class="kpi-card kpi-green"><div class="kpi-icon">💰</div><div class="kpi-data"><div class="label">Total Crédito</div><div class="value">${formatCurrency(creditos)}</div></div></div>
+      <div class="kpi-card kpi-red"><div class="kpi-icon">💸</div><div class="kpi-data"><div class="label">Total Débito</div><div class="value">${formatCurrency(debitos)}</div></div></div>
+      <div class="kpi-card kpi-blue"><div class="kpi-icon">🏦</div><div class="kpi-data"><div class="label">Saldo</div><div class="value">${formatCurrency(creditos-debitos)}</div></div></div>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th><th>Ações</th></tr></thead>
+      <tbody>${movs.length===0?'<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-muted)">Sem lançamentos</td></tr>':movs.slice().reverse().map(m=>`<tr><td>${formatDate(m.data)}</td><td><span class="badge ${m.tipo==='CREDITO'?'badge-green':'badge-red'}">${m.tipo}</span></td><td>${m.descricao}</td><td class="td-mono ${m.tipo==='CREDITO'?'col-green':'col-red'}">${formatCurrency(m.valor)}</td><td><button class="btn-icon btn-icon-red" onclick="excluirPoupanca(${m.id})">🗑️</button></td></tr>`).join('')}
+      </tbody>
+    </table></div></div>
+  </div>
+  <div id="modal-poupanca" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-poupanca')">
+    <div class="modal" style="max-width:420px"><div class="modal-header"><h2>🏦 Lançamento Poupança</h2><button class="modal-close" onclick="closeModal('modal-poupanca')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-control" id="poupa-data" value="${today()}"></div>
+      <div class="form-group"><label class="form-label">Tipo</label><select class="form-control" id="poupa-tipo"><option value="CREDITO">CRÉDITO (Depósito)</option><option value="DEBITO">DÉBITO (Saque)</option></select></div>
+      <div class="form-group"><label class="form-label">Descrição</label><input type="text" class="form-control" id="poupa-desc"></div>
+      <div class="form-group"><label class="form-label">Valor *</label><input type="number" step="0.01" class="form-control" id="poupa-valor"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-poupanca')">Cancelar</button><button class="btn btn-primary" onclick="salvarPoupanca()">💾 Salvar</button></div>
+    </div>
+  </div>`;
+}
+
+async function salvarPoupanca(){const data=document.getElementById('poupa-data').value;const tipo=document.getElementById('poupa-tipo').value;const desc=document.getElementById('poupa-desc').value;const valor=parseFloat(document.getElementById('poupa-valor').value);if(!data||!valor){toast('Preencha os campos!','error');return;}await dbAdd('poupanca',{data,tipo,descricao:desc,valor});closeModal('modal-poupanca');toast('Salvo!','success');renderPoupanca(document.getElementById('content'));}
+async function excluirPoupanca(id){if(!(await confirmDialog('Excluir?')))return;await dbDelete('poupanca',id);renderPoupanca(document.getElementById('content'));}
+
+async function renderCartao(container) {
+  const [cartoes,lancamentos]=await Promise.all([dbGet('cartao_credito'),dbGet('lancamentos_cartao')]);
+  const cartao=cartoes[0];const now=new Date();const mes=String(now.getMonth()+1).padStart(2,'0');const ano=now.getFullYear();
+  const lancMes=lancamentos.filter(l=>l.data?.startsWith(`${ano}-${mes}`));const totalMes=lancMes.reduce((s,l)=>s+(parseFloat(l.valor)||0),0);
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-header"><div class="section-title">💳 Cartão de Crédito</div><button class="btn btn-primary" onclick="openModal('modal-lanc-cartao')">+ Novo Lançamento</button></div>
+    ${cartao?`<div class="card" style="background:linear-gradient(135deg,#1e3a5f,#0f2544);border-color:#2a4a7f">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div style="font-size:13px;color:#94b8e0;margin-bottom:6px">${cartao.bandeira}</div><div style="font-size:22px;font-weight:800;letter-spacing:2px">${cartao.nome}</div></div>
+        <div style="text-align:right"><div style="font-size:12px;color:#94b8e0">Limite</div><div style="font-size:20px;font-weight:700;color:#60a5fa">${formatCurrency(cartao.limite)}</div></div>
+      </div>
+      <div style="display:flex;gap:24px;margin-top:16px">
+        <div><div style="font-size:11px;color:#94b8e0">Fechamento</div><div style="font-weight:600">Dia ${cartao.dia_fechamento}</div></div>
+        <div><div style="font-size:11px;color:#94b8e0">Vencimento</div><div style="font-weight:600">Dia ${cartao.dia_vencimento}</div></div>
+        <div><div style="font-size:11px;color:#94b8e0">Gasto no mês</div><div style="font-weight:600;color:#ef4444">${formatCurrency(totalMes)}</div></div>
+        <div><div style="font-size:11px;color:#94b8e0">Disponível</div><div style="font-weight:600;color:#10b981">${formatCurrency(cartao.limite-totalMes)}</div></div>
+      </div>
+    </div>`:'<div class="alert alert-info">Configure um cartão nos Cadastros</div>'}
+    <div class="card"><div class="card-title">Lançamentos do Mês</div><div class="table-wrap"><table>
+      <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Parcelas</th><th>Valor</th><th>Ações</th></tr></thead>
+      <tbody>${lancMes.length===0?'<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Sem lançamentos</td></tr>':lancMes.map(l=>`<tr><td>${formatDate(l.data)}</td><td>${l.descricao}</td><td>${l.categoria||'-'}</td><td>${l.parcela_atual||1}/${l.qtde_parcelas||1}</td><td class="td-mono col-red">${formatCurrency(l.valor)}</td><td><button class="btn-icon btn-icon-red" onclick="excluirLancCartao(${l.id})">🗑️</button></td></tr>`).join('')}
+      </tbody>
+    </table></div></div>
+  </div>
+  <div id="modal-lanc-cartao" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-lanc-cartao')">
+    <div class="modal" style="max-width:450px"><div class="modal-header"><h2>💳 Lançamento no Cartão</h2><button class="modal-close" onclick="closeModal('modal-lanc-cartao')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-control" id="cc-data" value="${today()}"></div>
+      <div class="form-group"><label class="form-label">Descrição *</label><input type="text" class="form-control" id="cc-desc"></div>
+      <div class="form-group"><label class="form-label">Categoria</label><input type="text" class="form-control" id="cc-cat"></div>
+      <div class="form-row cols-2">
+        <div class="form-group"><label class="form-label">Valor *</label><input type="number" step="0.01" class="form-control" id="cc-valor"></div>
+        <div class="form-group"><label class="form-label">Parcelas</label><input type="number" class="form-control" id="cc-parc" value="1" min="1"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-lanc-cartao')">Cancelar</button><button class="btn btn-danger" onclick="salvarLancCartao()">💾 Salvar</button></div>
+    </div>
+  </div>`;
+}
+
+async function salvarLancCartao(){const data=document.getElementById('cc-data').value;const desc=document.getElementById('cc-desc').value;const valor=parseFloat(document.getElementById('cc-valor').value);const parc=parseInt(document.getElementById('cc-parc').value)||1;const cat=document.getElementById('cc-cat').value;if(!desc||!valor){toast('Preencha os campos!','error');return;}const valorParc=valor/parc;for(let i=0;i<parc;i++)await dbAdd('lancamentos_cartao',{data:addMonths(data,i),descricao:desc,categoria:cat,valor:valorParc,parcela_atual:i+1,qtde_parcelas:parc});closeModal('modal-lanc-cartao');toast('Lançado!','success');renderCartao(document.getElementById('content'));}
+async function excluirLancCartao(id){if(!(await confirmDialog('Excluir?')))return;await dbDelete('lancamentos_cartao',id);renderCartao(document.getElementById('content'));}
+
+async function renderConciliacao(container) {
+  const contas=await dbGet('contas');
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="section-title">🔍 Conciliação Bancária</div>
+    <div class="card">
+      <div class="card-title">Importar Extrato CSV</div>
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Formato CSV: data,descricao,valor (primeira linha = cabeçalho)</p>
+      <div class="form-row cols-3">
+        <div class="form-group"><label class="form-label">Conta</label><select class="form-control" id="conc-conta">${contas.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Período Inicial</label><input type="date" class="form-control" id="conc-di" value="${today().slice(0,7)+'-01'}"></div>
+        <div class="form-group"><label class="form-label">Período Final</label><input type="date" class="form-control" id="conc-df" value="${today()}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Arquivo CSV</label><input type="file" class="form-control" id="conc-file" accept=".csv,.txt"></div>
+      <button class="btn btn-primary" onclick="processarConciliacao()">🔍 Processar</button>
+    </div>
+    <div id="conc-resultado" style="display:none"></div>
+  </div>`;
+}
+
+async function processarConciliacao(){const file=document.getElementById('conc-file').files[0];const di=document.getElementById('conc-di').value;const df=document.getElementById('conc-df').value;if(!file){toast('Selecione um arquivo!','error');return;}const text=await file.text();const lines=text.split('\n').filter(l=>l.trim());const extrato=[];for(const line of lines.slice(1)){const parts=line.split(',');if(parts.length>=3)extrato.push({data:parts[0]?.trim(),descricao:parts[1]?.trim(),valor:parseFloat(parts[2]?.replace(/[^0-9.-]/g,''))||0});}const [parcRec,parcDesp]=await Promise.all([dbGet('parcelas_receita'),dbGet('parcelas_despesa')]);const lancSist=[...parcRec.filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df).map(p=>({data:p.dt_pagamento,desc:p.descricao||p.tipo_nome,valor:parseFloat(p.valor_pago)||0,tipo:'Receita'})),...parcDesp.filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df).map(p=>({data:p.dt_pagamento,desc:p.descricao||p.cat_nome,valor:-(parseFloat(p.valor_pago)||0),tipo:'Despesa'}))];const te=extrato.reduce((s,e)=>s+e.valor,0);const ts=lancSist.reduce((s,l)=>s+l.valor,0);const res=document.getElementById('conc-resultado');res.style.display='block';res.innerHTML=`<div class="split-panel"><div class="card"><div class="card-title">📄 Extrato Banco (${extrato.length})</div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>${extrato.map(e=>`<tr><td>${e.data}</td><td>${e.descricao}</td><td class="td-mono ${e.valor>=0?'col-green':'col-red'}">${formatCurrency(e.valor)}</td></tr>`).join('')}</tbody></table></div><div style="margin-top:8px;text-align:right;font-weight:700">Total: ${formatCurrency(te)}</div></div><div class="card"><div class="card-title">💻 Sistema (${lancSist.length})</div><div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>${lancSist.map(l=>`<tr><td>${l.data}</td><td>${l.desc}</td><td><span class="badge ${l.tipo==='Receita'?'badge-green':'badge-red'}">${l.tipo}</span></td><td class="td-mono ${l.valor>=0?'col-green':'col-red'}">${formatCurrency(l.valor)}</td></tr>`).join('')}</tbody></table></div><div style="margin-top:8px;text-align:right;font-weight:700">Total: ${formatCurrency(ts)}</div></div></div><div class="card" style="margin-top:0"><div class="summary-bar"><div class="summary-item"><div class="label">Saldo Extrato</div><div class="val col-blue">${formatCurrency(te)}</div></div><div class="summary-item"><div class="label">Saldo Sistema</div><div class="val col-blue">${formatCurrency(ts)}</div></div><div class="summary-item"><div class="label">Diferença</div><div class="val ${Math.abs(te-ts)<0.01?'col-green':'col-red'}">${formatCurrency(te-ts)}</div></div><div class="summary-item"><div class="label">Status</div><div class="val ${Math.abs(te-ts)<0.01?'col-green':'col-red'}">${Math.abs(te-ts)<0.01?'✅ OK':'⚠️ Divergência'}</div></div></div></div>`;}
+
+
+// ══════════════════════════════════════════
+// CADASTROS
+// ══════════════════════════════════════════
+async function renderCadastros(container) {
+  container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px"><div class="section-title">⚙️ Cadastros</div>
+    <div class="tabs" id="cad-tabs">
+      <div class="tab active" data-tab="empresa" onclick="switchCadTab('empresa')">🏢 Empresa</div>
+      <div class="tab" data-tab="contas" onclick="switchCadTab('contas')">🏦 Contas</div>
+      <div class="tab" data-tab="clientes" onclick="switchCadTab('clientes')">👤 Clientes</div>
+      <div class="tab" data-tab="fornecedores" onclick="switchCadTab('fornecedores')">🏭 Fornecedores</div>
+      <div class="tab" data-tab="formas" onclick="switchCadTab('formas')">💳 Formas Pgto</div>
+      <div class="tab" data-tab="cat-receita" onclick="switchCadTab('cat-receita')">💚 Cat. Receita</div>
+      <div class="tab" data-tab="cat-despesa" onclick="switchCadTab('cat-despesa')">❤️ Cat. Despesa</div>
+      <div class="tab" data-tab="cartoes" onclick="switchCadTab('cartoes')">💳 Cartões</div>
+    </div>
+    <div id="cad-content"></div></div>`;
+  switchCadTab('empresa');
+}
+
+async function switchCadTab(tab) {
+  document.querySelectorAll('#cad-tabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  const c=document.getElementById('cad-content');
+  if(tab==='empresa') renderCadEmpresa(c);
+  else if(tab==='contas') renderCadContas(c);
+  else if(tab==='clientes') renderCadList(c,'clientes','Clientes',['nome','cpf_cnpj','email','telefone']);
+  else if(tab==='fornecedores') renderCadList(c,'fornecedores','Fornecedores',['nome','cpf_cnpj','email','telefone']);
+  else if(tab==='formas') renderCadSimple(c,'formas_pagamento','Formas de Pagamento');
+  else if(tab==='cat-receita') renderCadSimple(c,'categorias_receita','Categorias de Receita');
+  else if(tab==='cat-despesa') renderCadCatDespesa(c);
+  else if(tab==='cartoes') renderCadCartoes(c);
+}
+
+async function renderCadEmpresa(c) {
+  const empresa=(await dbGet('empresa'))[0]||{};
+  c.innerHTML=`<div class="card" style="max-width:600px"><div class="card-title">Dados da Empresa</div>
+    <div class="form-row cols-2">
+      <div class="form-group"><label class="form-label">Nome</label><input type="text" class="form-control" id="emp-nome" value="${empresa.nome||''}"></div>
+      <div class="form-group"><label class="form-label">CNPJ</label><input type="text" class="form-control" id="emp-cnpj" value="${empresa.cnpj||''}"></div>
+      <div class="form-group"><label class="form-label">E-mail</label><input type="text" class="form-control" id="emp-email" value="${empresa.email||''}"></div>
+      <div class="form-group"><label class="form-label">Telefone</label><input type="text" class="form-control" id="emp-tel" value="${empresa.telefone||''}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Endereço</label><input type="text" class="form-control" id="emp-end" value="${empresa.endereco||''}"></div>
+    <button class="btn btn-primary" onclick="salvarEmpresa()">💾 Salvar</button></div>`;
+}
+
+async function salvarEmpresa(){const empresa=(await dbGet('empresa'))[0]||{id:1};await dbPut('empresa',{...empresa,nome:document.getElementById('emp-nome').value,cnpj:document.getElementById('emp-cnpj').value,email:document.getElementById('emp-email').value,telefone:document.getElementById('emp-tel').value,endereco:document.getElementById('emp-end').value});toast('Salvo!','success');}
+
+async function renderCadContas(c) {
+  const contas=await dbGet('contas');
+  c.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="openModalConta()">+ Nova Conta</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Banco</th><th>Tipo</th><th>Saldo Inicial</th><th>Ações</th></tr></thead>
+    <tbody>${contas.map(ct=>`<tr><td>${ct.nome}</td><td>${ct.banco||'-'}</td><td>${ct.tipo}</td><td class="td-mono">${formatCurrency(ct.saldo_inicial)}</td><td><button class="btn-icon btn-icon-red" onclick="excluirCad('contas',${ct.id},()=>renderCadContas(document.getElementById('cad-content')))">🗑️</button></td></tr>`).join('')}
+    </tbody></table></div></div>
+    <div id="modal-conta" class="modal-overlay" style="display:none"><div class="modal" style="max-width:450px">
+    <div class="modal-header"><h2>🏦 Nova Conta</h2><button class="modal-close" onclick="closeModal('modal-conta')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Nome *</label><input type="text" class="form-control" id="ct-nome"></div>
+      <div class="form-row cols-2">
+        <div class="form-group"><label class="form-label">Banco</label><input type="text" class="form-control" id="ct-banco"></div>
+        <div class="form-group"><label class="form-label">Tipo</label><select class="form-control" id="ct-tipo"><option value="corrente">Corrente</option><option value="poupanca">Poupança</option><option value="caixa">Caixa</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Saldo Inicial</label><input type="number" step="0.01" class="form-control" id="ct-saldo" value="0"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-conta')">Cancelar</button><button class="btn btn-primary" onclick="salvarConta()">💾 Salvar</button></div>
+    </div></div>`;
+}
+
+function openModalConta(){openModal('modal-conta');}
+async function salvarConta(){const nome=document.getElementById('ct-nome').value;if(!nome){toast('Nome obrigatório!','error');return;}await dbAdd('contas',{nome,banco:document.getElementById('ct-banco').value,tipo:document.getElementById('ct-tipo').value,saldo_inicial:parseFloat(document.getElementById('ct-saldo').value)||0,ativo:true});closeModal('modal-conta');toast('Conta salva!','success');renderCadContas(document.getElementById('cad-content'));}
+
+async function renderCadList(c,store,title,fields) {
+  const items=await dbGet(store);const labels={nome:'Nome',cpf_cnpj:'CPF/CNPJ',email:'E-mail',telefone:'Telefone'};
+  c.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="openModalCadItem('${store}','${title}','${fields.join(',')}')">+ Novo</button></div>
+    <div class="table-wrap"><table><thead><tr>${fields.map(f=>`<th>${labels[f]||f}</th>`).join('')}<th>Ações</th></tr></thead>
+    <tbody>${items.map(item=>`<tr>${fields.map(f=>`<td>${item[f]||'-'}</td>`).join('')}<td><button class="btn-icon btn-icon-red" onclick="excluirCad('${store}',${item.id},()=>renderCadList(document.getElementById('cad-content'),'${store}','${title}','${fields}'.split(',')))">🗑️</button></td></tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+
+let _cadItemCallback=null;
+function openModalCadItem(store,title,fieldsStr){const fields=fieldsStr.split(',');const labels={nome:'Nome',cpf_cnpj:'CPF/CNPJ',email:'E-mail',telefone:'Telefone'};let overlay=document.getElementById('modal-cad-item');if(!overlay){overlay=document.createElement('div');overlay.id='modal-cad-item';overlay.className='modal-overlay';document.body.appendChild(overlay);}overlay.innerHTML=`<div class="modal" style="max-width:420px"><div class="modal-header"><h2>${title}</h2><button class="modal-close" onclick="document.getElementById('modal-cad-item').style.display='none'">✕</button></div><div class="modal-body">${fields.map(f=>`<div class="form-group"><label class="form-label">${labels[f]||f}</label><input type="text" class="form-control" id="cad-${f}" placeholder="${labels[f]||f}"></div>`).join('')}</div><div class="modal-footer"><button class="btn btn-secondary" onclick="document.getElementById('modal-cad-item').style.display='none'">Cancelar</button><button class="btn btn-primary" onclick="salvarCadItem('${store}','${fieldsStr}')">💾 Salvar</button></div></div>`;overlay.style.display='flex';_cadItemCallback=()=>{renderCadList(document.getElementById('cad-content'),store,title,fields);};}
+async function salvarCadItem(store,fieldsStr){const fields=fieldsStr.split(',');const obj={ativo:true};for(const f of fields)obj[f]=document.getElementById('cad-'+f)?.value||'';if(!obj.nome){toast('Nome obrigatório!','error');return;}await dbAdd(store,obj);document.getElementById('modal-cad-item').style.display='none';toast('Salvo!','success');if(_cadItemCallback)_cadItemCallback();}
+
+async function renderCadSimple(c,store,title){const items=await dbGet(store);c.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;gap:8px;align-items:flex-end"><div class="form-group" style="flex:1;margin-bottom:0"><input type="text" class="form-control" id="cad-simple-nome" placeholder="Nome..."></div><button class="btn btn-primary" onclick="salvarCadSimple('${store}','${title}')">+ Adicionar</button></div><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Ações</th></tr></thead><tbody>${items.map(it=>`<tr><td>${it.nome}</td><td><button class="btn-icon btn-icon-red" onclick="excluirCad('${store}',${it.id},()=>renderCadSimple(document.getElementById('cad-content'),'${store}','${title}'))">🗑️</button></td></tr>`).join('')}</tbody></table></div></div>`;}
+async function salvarCadSimple(store,title){const nome=document.getElementById('cad-simple-nome').value;if(!nome){toast('Digite o nome!','error');return;}await dbAdd(store,{nome,ativo:true});document.getElementById('cad-simple-nome').value='';toast('Adicionado!','success');renderCadSimple(document.getElementById('cad-content'),store,title);}
+
+async function renderCadCatDespesa(c){const items=await dbGet('categorias_despesa');c.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;gap:8px;align-items:flex-end"><div class="form-group" style="flex:1;margin-bottom:0"><input type="text" class="form-control" id="cat-desp-nome" placeholder="Categoria..."></div><div class="form-group" style="flex:1;margin-bottom:0"><input type="text" class="form-control" id="cat-desp-sub" placeholder="Sub-categoria..."></div><button class="btn btn-primary" onclick="salvarCatDespesa()">+ Adicionar</button></div><div class="table-wrap"><table><thead><tr><th>Categoria</th><th>Sub-categoria</th><th>Ações</th></tr></thead><tbody>${items.map(it=>`<tr><td>${it.nome}</td><td>${it.subcategoria||'-'}</td><td><button class="btn-icon btn-icon-red" onclick="excluirCad('categorias_despesa',${it.id},()=>renderCadCatDespesa(document.getElementById('cad-content')))">🗑️</button></td></tr>`).join('')}</tbody></table></div></div>`;}
+async function salvarCatDespesa(){const nome=document.getElementById('cat-desp-nome').value;const sub=document.getElementById('cat-desp-sub').value;if(!nome){toast('Digite a categoria!','error');return;}await dbAdd('categorias_despesa',{nome,subcategoria:sub,ativo:true});toast('Adicionado!','success');renderCadCatDespesa(document.getElementById('cad-content'));}
+
+async function renderCadCartoes(c){const cartoes=await dbGet('cartao_credito');const contas=await dbGet('contas');c.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;justify-content:flex-end"><button class="btn btn-primary btn-sm" onclick="openModal('modal-cartao')">+ Novo Cartão</button></div><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Bandeira</th><th>Limite</th><th>Fechamento</th><th>Vencimento</th><th>Ações</th></tr></thead><tbody>${cartoes.map(ct=>`<tr><td>${ct.nome}</td><td>${ct.bandeira}</td><td class="td-mono">${formatCurrency(ct.limite)}</td><td>Dia ${ct.dia_fechamento}</td><td>Dia ${ct.dia_vencimento}</td><td><button class="btn-icon btn-icon-red" onclick="excluirCad('cartao_credito',${ct.id},()=>renderCadCartoes(document.getElementById('cad-content')))">🗑️</button></td></tr>`).join('')}</tbody></table></div></div>
+  <div id="modal-cartao" class="modal-overlay" style="display:none"><div class="modal" style="max-width:450px"><div class="modal-header"><h2>💳 Novo Cartão</h2><button class="modal-close" onclick="closeModal('modal-cartao')">✕</button></div><div class="modal-body">
+  <div class="form-row cols-2"><div class="form-group"><label class="form-label">Nome</label><input type="text" class="form-control" id="cart-nome"></div><div class="form-group"><label class="form-label">Bandeira</label><select class="form-control" id="cart-band"><option>Visa</option><option>Mastercard</option><option>Elo</option><option>Amex</option></select></div></div>
+  <div class="form-group"><label class="form-label">Limite</label><input type="number" step="0.01" class="form-control" id="cart-lim"></div>
+  <div class="form-row cols-2"><div class="form-group"><label class="form-label">Dia Fechamento</label><input type="number" class="form-control" id="cart-fech" min="1" max="31" value="1"></div><div class="form-group"><label class="form-label">Dia Vencimento</label><input type="number" class="form-control" id="cart-venc" min="1" max="31" value="10"></div></div>
+  <div class="form-group"><label class="form-label">Conta débito</label><select class="form-control" id="cart-conta">${contas.map(c=>`<option value="${c.id}">${c.nome}</option>`).join('')}</select></div>
+  </div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-cartao')">Cancelar</button><button class="btn btn-primary" onclick="salvarCartao()">💾 Salvar</button></div></div></div>`;}
+
+async function salvarCartao(){await dbAdd('cartao_credito',{nome:document.getElementById('cart-nome').value,bandeira:document.getElementById('cart-band').value,limite:parseFloat(document.getElementById('cart-lim').value)||0,dia_fechamento:parseInt(document.getElementById('cart-fech').value),dia_vencimento:parseInt(document.getElementById('cart-venc').value),conta_id:parseInt(document.getElementById('cart-conta').value),ativo:true});closeModal('modal-cartao');toast('Cartão salvo!','success');renderCadCartoes(document.getElementById('cad-content'));}
+async function excluirCad(store,id,callback){if(!(await confirmDialog('Excluir este registro?')))return;await dbDelete(store,id);toast('Excluído!','success');if(callback)callback();}
+
+async function renderCentrosCusto(container){const centros=await dbGet('centros_custo');container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px"><div class="section-header"><div class="section-title">🏢 Centro de Custo</div><button class="btn btn-primary" onclick="openModal('modal-cc')">+ Novo Centro</button></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Código</th><th>Nome</th><th>Ações</th></tr></thead><tbody>${centros.map(c=>`<tr><td>${c.codigo}</td><td>${c.nome}</td><td><button class="btn-icon btn-icon-red" onclick="excluirCC(${c.id})">🗑️</button></td></tr>`).join('')}</tbody></table></div></div></div>
+  <div id="modal-cc" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-cc')"><div class="modal" style="max-width:380px"><div class="modal-header"><h2>🏢 Novo Centro de Custo</h2><button class="modal-close" onclick="closeModal('modal-cc')">✕</button></div><div class="modal-body"><div class="form-group"><label class="form-label">Código</label><input type="text" class="form-control" id="cc-cod"></div><div class="form-group"><label class="form-label">Nome *</label><input type="text" class="form-control" id="cc-nome"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-cc')">Cancelar</button><button class="btn btn-primary" onclick="salvarCC()">💾 Salvar</button></div></div></div>`;}
+async function salvarCC(){const nome=document.getElementById('cc-nome').value;if(!nome){toast('Nome obrigatório!','error');return;}await dbAdd('centros_custo',{codigo:document.getElementById('cc-cod').value,nome,ativo:true});closeModal('modal-cc');toast('Salvo!','success');renderCentrosCusto(document.getElementById('content'));}
+async function excluirCC(id){if(!(await confirmDialog('Excluir?')))return;await dbDelete('centros_custo',id);renderCentrosCusto(document.getElementById('content'));}
+
+async function renderUsuarios(container){const usuarios=await dbGet('usuarios');container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px"><div class="section-header"><div class="section-title">👥 Usuários</div><button class="btn btn-primary" onclick="openModal('modal-user')">+ Novo Usuário</button></div><div class="card"><div class="table-wrap"><table><thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Ações</th></tr></thead><tbody>${usuarios.map(u=>`<tr><td>${u.nome}</td><td>${u.username}</td><td><span class="badge badge-blue">${u.perfil}</span></td><td><button class="btn-icon btn-icon-red" onclick="excluirUsuario(${u.id})">🗑️</button></td></tr>`).join('')}</tbody></table></div></div></div>
+  <div id="modal-user" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-user')"><div class="modal" style="max-width:420px"><div class="modal-header"><h2>👤 Novo Usuário</h2><button class="modal-close" onclick="closeModal('modal-user')">✕</button></div><div class="modal-body"><div class="form-group"><label class="form-label">Nome Completo *</label><input type="text" class="form-control" id="u-nome"></div><div class="form-row cols-2"><div class="form-group"><label class="form-label">Username *</label><input type="text" class="form-control" id="u-user"></div><div class="form-group"><label class="form-label">Senha *</label><input type="password" class="form-control" id="u-pass"></div></div><div class="form-group"><label class="form-label">Perfil</label><select class="form-control" id="u-perfil"><option value="admin">Administrador</option><option value="operador">Operador</option><option value="consulta">Consulta</option></select></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-user')">Cancelar</button><button class="btn btn-primary" onclick="salvarUsuario()">💾 Salvar</button></div></div></div>`;}
+async function salvarUsuario(){const nome=document.getElementById('u-nome').value;const username=document.getElementById('u-user').value;const password=document.getElementById('u-pass').value;if(!nome||!username||!password){toast('Preencha todos os campos!','error');return;}await dbAdd('usuarios',{nome,username,password,perfil:document.getElementById('u-perfil').value,ativo:true});closeModal('modal-user');toast('Usuário criado!','success');renderUsuarios(document.getElementById('content'));}
+async function excluirUsuario(id){if(id===currentUser?.id){toast('Não pode excluir o usuário logado!','error');return;}if(!(await confirmDialog('Excluir usuário?')))return;await dbDelete('usuarios',id);renderUsuarios(document.getElementById('content'));}
+
+async function renderBackup(container){container.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px"><div class="section-title">💾 Backup e Restauração</div><div class="grid-2">
+  <div class="card"><div class="card-title">📤 Exportar Backup</div><p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">Exporta todos os dados em JSON.</p><button class="btn btn-success" onclick="exportarBackup()">💾 Baixar Backup JSON</button></div>
+  <div class="card"><div class="card-title">📥 Restaurar Backup</div><p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px"><strong style="color:var(--accent-red)">Atenção: substitui todos os dados!</strong></p><div class="form-group"><input type="file" class="form-control" id="backup-file" accept=".json"></div><button class="btn btn-danger" onclick="importarBackup()">⚠️ Restaurar</button></div>
+  </div><div class="card"><div class="card-title">📊 Exportar CSV</div><div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-secondary" onclick="exportarCSVDados('parcelas_receita','receitas')">📥 Receitas CSV</button>
+    <button class="btn btn-secondary" onclick="exportarCSVDados('parcelas_despesa','despesas')">📥 Despesas CSV</button>
+    <button class="btn btn-secondary" onclick="exportarCSVDados('transferencias','transferencias')">📥 Transferências CSV</button>
+  </div></div>
+  <div class="card"><div class="card-title" style="color:var(--accent-red)">⚠️ Zona de Perigo</div><p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px">Apaga todos os lançamentos permanentemente.</p><button class="btn btn-danger" onclick="limparLancamentos()">🗑️ Limpar Lançamentos</button></div>
+  </div>`;}
+
+const ALL_TABLES=['empresa','usuarios','contas','clientes','fornecedores','formas_pagamento','categorias_receita','categorias_despesa','centros_custo','receitas','parcelas_receita','despesas','parcelas_despesa','poupanca','transferencias','cartao_credito','lancamentos_cartao'];
+
+async function exportarBackup(){const backup={};for(const t of ALL_TABLES)backup[t]=await dbGet(t);const json=JSON.stringify(backup,null,2);const blob=new Blob([json],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`financeiro_backup_${today()}.json`;a.click();toast('Backup exportado!','success');}
+async function importarBackup(){const file=document.getElementById('backup-file').files[0];if(!file){toast('Selecione um arquivo!','error');return;}if(!(await confirmDialog('ATENÇÃO: Todos os dados serão substituídos!')))return;const text=await file.text();const backup=JSON.parse(text);for(const[store,data]of Object.entries(backup)){if(ALL_TABLES.includes(store)){await dbClear(store);for(const item of data)await dbPut(store,item);}}toast('Backup restaurado!','success');setTimeout(()=>location.reload(),1500);}
+async function exportarCSVDados(store,filename){const data=await dbGet(store);exportCSV(data,`${filename}_${today()}.csv`);}
+async function limparLancamentos(){if(!(await confirmDialog('ATENÇÃO: Apagará TODOS os lançamentos!')))return;for(const t of['receitas','parcelas_receita','despesas','parcelas_despesa','transferencias','poupanca','lancamentos_cartao'])await dbClear(t);toast('Lançamentos limpos!','success');navigate('dashboard');}
+
+</script>
 </body>
 </html>
