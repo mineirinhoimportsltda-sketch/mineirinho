@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FinanceiroApp — Controle Financeiro</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+</head>
+<body>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- App -->
+<div id="app" style="display:none">
+  
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">💰</div>
+      <div class="logo-text">FinanceiroApp<small>Controle Financeiro</small></div>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-label">Principal</div>
+      <div class="nav-item" data-page="dashboard" onclick="navigate('dashboard')">
+        <span class="icon">📊</span><span>Dashboard</span>
+      </div>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-label">Lançamentos</div>
+      <div class="nav-item" data-page="receitas" onclick="navigate('receitas')">
+        <span class="icon">💚</span><span>Receitas</span>
+      </div>
+      <div class="nav-item" data-page="despesas" onclick="navigate('despesas')">
+        <span class="icon">❤️</span><span>Despesas</span>
+      </div>
+      <div class="nav-item" data-page="poupanca" onclick="navigate('poupanca')">
+        <span class="icon">🏦</span><span>Poupança</span>
+      </div>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-label">Contas</div>
+      <div class="nav-item" data-page="contas_receber" onclick="navigate('contas_receber')">
+        <span class="icon">📥</span><span>A Receber</span>
+      </div>
+      <div class="nav-item" data-page="contas_pagar" onclick="navigate('contas_pagar')">
+        <span class="icon">📤</span><span>A Pagar</span>
+      </div>
+      <div class="nav-item" data-page="cartao" onclick="navigate('cartao')">
+        <span class="icon">💳</span><span>Cartão Crédito</span>
+      </div>
+      <div class="nav-item" data-page="transferencias" onclick="navigate('transferencias')">
+        <span class="icon">🔄</span><span>Transferências</span>
+      </div>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-label">Análise</div>
+      <div class="nav-item" data-page="extrato" onclick="navigate('extrato')">
+        <span class="icon">📋</span><span>Extrato Comparativo</span>
+      </div>
+      <div class="nav-item" data-page="relatorios" onclick="navigate('relatorios')">
+        <span class="icon">📑</span><span>Relatórios</span>
+      </div>
+      <div class="nav-item" data-page="graficos" onclick="navigate('graficos')">
+        <span class="icon">📈</span><span>Gráficos</span>
+      </div>
+      <div class="nav-item" data-page="conciliacao" onclick="navigate('conciliacao')">
+        <span class="icon">🔍</span><span>Conciliação</span>
+      </div>
+    </div>
+    
+    <div class="nav-section">
+      <div class="nav-label">Configurações</div>
+      <div class="nav-item" data-page="centros_custo" onclick="navigate('centros_custo')">
+        <span class="icon">🏢</span><span>Centro de Custo</span>
+      </div>
+      <div class="nav-item" data-page="cadastros" onclick="navigate('cadastros')">
+        <span class="icon">⚙️</span><span>Cadastros</span>
+      </div>
+      <div class="nav-item" data-page="usuarios" onclick="navigate('usuarios')">
+        <span class="icon">👥</span><span>Usuários</span>
+      </div>
+      <div class="nav-item" data-page="backup" onclick="navigate('backup')">
+        <span class="icon">💾</span><span>Backup</span>
+      </div>
+    </div>
+    
+    <div style="padding:16px;margin-top:auto;border-top:1px solid var(--border)">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px" id="user-name">...</div>
+      <button class="btn btn-secondary btn-sm" style="width:100%;justify-content:center" onclick="logout()">🚪 Sair</button>
+    </div>
+  </nav>
+  
+  <!-- Main content area -->
+  <div id="main">
+    <!-- Topbar -->
+    <header id="topbar">
+      <h1 id="page-title">Dashboard</h1>
+      <div class="topbar-actions">
+        <button class="btn btn-success btn-sm" onclick="navigate('receitas')">+ Receita</button>
+        <button class="btn btn-danger btn-sm" onclick="navigate('despesas')">+ Despesa</button>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('backup')" title="Backup">💾</button>
+      </div>
+    </header>
+    
+    <!-- Page content -->
+    <main id="content"></main>
+  </div>
+  
+</div>
+
+<!-- Scripts -->
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/lancamentos.js"></script>
+<script src="js/contas.js"></script>
+<script src="js/extras.js"></script>
+<script src="js/cadastros.js"></script>
+
+</body>
+</html>
