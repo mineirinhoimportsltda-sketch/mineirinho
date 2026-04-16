@@ -277,6 +277,7 @@ textarea.field{height:auto;min-height:64px;resize:vertical}
       <button class="emp-btn" id="emp-btn-MG" onclick="setEmpresa('MG')">MG</button>
     </div>
     <span class="nav-user" id="nav-user">...</span>
+    <span id="refresh-timer" style="color:#4a6478;font-size:11px;font-weight:600" title="Atualização automática a cada 60s">🔄 <span id="refresh-countdown">60</span>s</span>
     <button class="nav-logout" onclick="logout()">Sair</button>
   </div>
 </nav>
@@ -295,13 +296,27 @@ const supa=supabase.createClient(SUPA_URL,SUPA_KEY);
 // DB LAYER
 // ═══════════════════════════════════
 async function dbGet(table,id){
-  if(id!==undefined){const{data,error}=await supa.from(table).select('*').eq('id',id).single();return error?null:data;}
-  const{data,error}=await supa.from(table).select('*').order('id');
-  if(error){console.error(table,error);return[];}return data||[];
+  try{
+    if(id!==undefined){const{data,error}=await supa.from(table).select('*').eq('id',id).single();if(error){console.error(table,error);return null;}return data;}
+    const{data,error}=await supa.from(table).select('*').order('id');
+    if(error){console.error(table,error);toast('Erro ao carregar '+table+': '+error.message,'err');return[];}
+    return data||[];
+  }catch(e){console.error(table,e);toast('Falha de conexão: '+e.message,'err');return id!==undefined?null:[];}
 }
-async function dbAdd(table,obj){const clean={...obj};delete clean.id;const{data,error}=await supa.from(table).insert(clean).select('id').single();if(error)throw error;return data.id;}
-async function dbPut(table,obj){const{error}=await supa.from(table).upsert(obj);if(error)throw error;}
-async function dbDelete(table,id){const{error}=await supa.from(table).delete().eq('id',id);if(error)throw error;}
+async function dbAdd(table,obj){
+  const clean={...obj};delete clean.id;
+  const{data,error}=await supa.from(table).insert(clean).select('id').single();
+  if(error){console.error('INSERT',table,error);toast('Erro ao salvar em '+table+': '+error.message,'err');throw error;}
+  return data.id;
+}
+async function dbPut(table,obj){
+  const{error}=await supa.from(table).upsert(obj);
+  if(error){console.error('UPSERT',table,error);toast('Erro ao atualizar em '+table+': '+error.message,'err');throw error;}
+}
+async function dbDelete(table,id){
+  const{error}=await supa.from(table).delete().eq('id',id);
+  if(error){console.error('DELETE',table,error);toast('Erro ao excluir: '+error.message,'err');throw error;}
+}
 async function dbClear(table){await supa.from(table).delete().neq('id',0);}
 
 // ═══════════════════════════════════
@@ -1402,12 +1417,12 @@ async function pgReceitas(c){
           </select>
         </div>
         <div class="form-group"><label class="form-label">Conta *</label>
-          <select class="field" id="rec-conta">${contas.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select>
+          <select class="field" id="rec-conta">${contas.filter(c=>c.ativo).length===0?'<option value="">⚠️ Cadastre uma conta primeiro</option>':contas.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select>
         </div>
         <div class="form-group"><label class="form-label">Tipo/Categoria *
           <button type="button" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:11px;font-weight:700;margin-left:4px" onclick="recAddCat()">＋ nova</button>
         </label>
-          <select class="field" id="rec-tipo">${cats.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select>
+          <select class="field" id="rec-tipo">${cats.filter(c=>c.ativo).length===0?'<option value="">⚠️ Cadastre uma categoria primeiro</option>':cats.filter(c=>c.ativo).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select>
         </div>
         <div class="form-group"><label class="form-label">Cliente
           <button type="button" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:11px;font-weight:700;margin-left:4px" onclick="recAddCliente()">＋ novo</button>
@@ -1534,6 +1549,7 @@ function gerarParcelasRec(){
 
 async function salvarReceita(){
   if(parcRecTemp.length===0){toast('Gere as parcelas primeiro!','err');return;}
+  try {
   const valor=parseFloat(document.getElementById('rec-valor').value)||0;
   const qtde=parseInt(document.getElementById('rec-qtde').value)||1;
   if(valor<=0){toast('Informe o valor!','err');return;}
@@ -1548,8 +1564,10 @@ async function salvarReceita(){
   const recId=await dbAdd('receitas',{empresa:emp,data_lancamento:today(),conta_id:contaId,conta_nome:conta?.nome,tipo_id:tipoId,tipo_nome:cat?.nome,cliente_id:cliId,cliente_nome:cli?.nome,forma_id:formaId,forma_nome:forma?.nome,descricao:document.getElementById('rec-desc').value,data_primeira:document.getElementById('rec-data1').value,valor_parcela:valor,qtde_parcelas:qtde,valor_total:valor*qtde,recebido:parcRecTemp.every(p=>p.recebido)});
   for(const p of parcRecTemp) await dbAdd('parcelas_receita',{empresa:emp,receita_id:recId,numero:p.numero,total:p.total,vencimento:p.vencimento,valor:p.valor,forma_id:formaId,forma_nome:forma?.nome,conta_id:contaId,conta_nome:conta?.nome,tipo_nome:cat?.nome,cliente_nome:cli?.nome,descricao:document.getElementById('rec-desc').value,dt_pagamento:p.recebido?today():null,valor_pago:p.recebido?p.valor:0,categoria:cat?.nome});
   document.getElementById('modal-rec').classList.remove('open');
-  toast('Receita salva!','ok');
+  toast('Receita salva com sucesso!','ok');
+  parcRecTemp=[];
   pgReceitas(document.getElementById('content'));
+  } catch(e) { toast('Erro ao salvar receita: '+e.message,'err'); }
 }
 
 async function excluirReceita(id){
@@ -1741,6 +1759,7 @@ async function salvarDespesa(){
   if(parcDespTemp.length===0){toast('Gere as parcelas!','err');return;}
   const valor=parseFloat(document.getElementById('desp-valor').value)||0;const qtde=parseInt(document.getElementById('desp-qtde').value)||1;
   if(valor<=0){toast('Informe o valor!','err');return;}
+  try {
   const [cats,contas,forns,formas]=await Promise.all([dbGet('categorias_despesa'),dbGet('contas'),dbGet('fornecedores'),dbGet('formas_pagamento')]);
   const emp=document.getElementById('desp-emp').value;
   const catId=parseInt(document.getElementById('desp-cat').value);const contaId=parseInt(document.getElementById('desp-conta').value);
@@ -1749,7 +1768,8 @@ async function salvarDespesa(){
   const forn=forns.find(f=>f.id===fornId);const forma=formas.find(f=>f.id===formaId);
   const despId=await dbAdd('despesas',{empresa:emp,data_lancamento:today(),data_emissao:today(),conta_id:contaId,conta_nome:conta?.nome,cat_id:catId,cat_nome:cat?.nome,subcat:cat?.subcategoria,forn_id:fornId,forn_nome:forn?.nome,forma_id:formaId,forma_nome:forma?.nome,descricao:document.getElementById('desp-desc').value,data_primeira:document.getElementById('desp-data1').value,valor_parcela:valor,qtde_parcelas:qtde,valor_total:valor*qtde,quitado:parcDespTemp.every(p=>p.quitado)});
   for(const p of parcDespTemp) await dbAdd('parcelas_despesa',{empresa:emp,despesa_id:despId,numero:p.numero,total:p.total,vencimento:p.vencimento,valor:p.valor,forma_id:formaId,forma_nome:forma?.nome,conta_id:contaId,conta_nome:conta?.nome,cat_nome:cat?.nome,forn_nome:forn?.nome,descricao:document.getElementById('desp-desc').value,dt_pagamento:p.quitado?today():null,valor_pago:p.quitado?p.valor:0,categoria:cat?.nome});
-  document.getElementById('modal-desp').classList.remove('open');toast('Despesa salva!','ok');pgDespesas(document.getElementById('content'));
+  document.getElementById('modal-desp').classList.remove('open');toast('Despesa salva!','ok');parcDespTemp=[];pgDespesas(document.getElementById('content'));
+  } catch(e) { toast('Erro ao salvar despesa: '+e.message,'err'); }
 }
 async function excluirDespesa(id){if(!(await confirm2('Excluir?')))return;await dbDelete('despesas',id);pgDespesas(document.getElementById('content'));}
 
@@ -2506,113 +2526,155 @@ async function limparTudo(){if(!(await confirm2('ATENÇÃO: Apagará TODOS os la
 function parseNFe(xmlStr) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlStr, 'text/xml');
-  const get = (sel, base) => {
-    const el = (base || doc).querySelector(sel);
+
+  // Helper robusto: busca por tagName (ignora namespace) dentro de um contexto
+  const tag = (name, ctx) => {
+    const el = (ctx||doc).getElementsByTagName(name)[0];
     return el ? el.textContent.trim() : '';
   };
-  const getFloat = (sel, base) => parseFloat(get(sel, base) || '0') || 0;
+  const tagF = (name, ctx) => parseFloat(tag(name, ctx) || '0') || 0;
+  // Helper para buscar child direto de um pai específico
+  const child = (parentTag, childTag, ctx) => {
+    const parents = (ctx||doc).getElementsByTagName(parentTag);
+    for(const p of parents){
+      const c = p.getElementsByTagName(childTag)[0];
+      if(c) return c.textContent.trim();
+    }
+    return '';
+  };
 
-  // Detectar tipo
-  const isNFe  = doc.querySelector('NFe, nfeProc') !== null;
-  const isNFSe = doc.querySelector('CompNfse, nfse, RPS') !== null;
-  const isCTe  = doc.querySelector('CTe, cteProc') !== null;
+  // Detectar tipo — verifica tags raiz
+  const rootTag = doc.documentElement?.tagName || '';
+  const allTags = xmlStr.slice(0,2000);
+  const isNFSe = /CompNfse|nfse|NFSe|RPS|InfNfse/i.test(allTags);
+  const isCTe  = /cteProc|infCte|CTe/i.test(allTags) && !isNFSe;
   const tipo   = isCTe ? 'CTe' : isNFSe ? 'NFSe' : 'NFe';
 
   let result = { tipo, raw: xmlStr };
 
   if (tipo === 'NFe') {
-    // Tenta pegar de dentro de nfeProc ou NFe diretamente
-    const infNFe = doc.querySelector('infNFe') || doc;
+    const infNFe = doc.getElementsByTagName('infNFe')[0] || doc;
+    const emit   = doc.getElementsByTagName('emit')[0];
+    const dest   = doc.getElementsByTagName('dest')[0];
+    const total  = doc.getElementsByTagName('ICMSTot')[0] || doc.getElementsByTagName('total')[0];
+    const ide    = doc.getElementsByTagName('ide')[0];
+
+    // Chave de acesso — pegar do atributo Id ou chNFe
+    let chave = '';
+    const infEl = doc.getElementsByTagName('infNFe')[0];
+    if(infEl) chave = (infEl.getAttribute('Id')||'').replace(/^NFe/,'');
+    if(!chave) chave = tag('chNFe');
+    chave = chave.replace(/[^0-9]/g,'').slice(0,44);
+
     result = {
       ...result,
-      chave_acesso: get('infNFe', doc).replace(/[^0-9]/g,'').slice(0,44) ||
-                    doc.querySelector('chNFe')?.textContent?.trim() || '',
-      numero:  get('nNF', infNFe),
-      serie:   get('serie', infNFe),
-      data_emissao: (get('dhEmi', infNFe) || get('dEmi', infNFe)).slice(0,10),
-      natureza_operacao: get('natOp', infNFe),
-      emitente_cnpj:  get('emit CNPJ', infNFe) || get('CNPJ', doc.querySelector('emit')),
-      emitente_razao: get('emit xNome', infNFe) || get('xNome', doc.querySelector('emit')),
-      emitente_uf:    get('emit enderEmit UF', infNFe),
-      destinatario_cnpj:  get('dest CNPJ', infNFe) || get('dest CPF', infNFe),
-      destinatario_razao: get('dest xNome', infNFe),
-      valor_produtos: getFloat('vProd', infNFe),
-      valor_frete:    getFloat('vFrete', infNFe),
-      valor_seguro:   getFloat('vSeg', infNFe),
-      valor_desconto: getFloat('vDesc', infNFe),
-      valor_outros:   getFloat('vOutro', infNFe),
-      valor_total:    getFloat('vNF', infNFe),
-      base_icms:  getFloat('vBC', infNFe),
-      valor_icms: getFloat('vICMS', infNFe),
-      valor_ipi:  getFloat('vIPI', infNFe),
-      valor_pis:  getFloat('vPIS', infNFe),
-      valor_cofins: getFloat('vCOFINS', infNFe),
+      chave_acesso: chave,
+      numero:  tag('nNF', ide||infNFe),
+      serie:   tag('serie', ide||infNFe),
+      data_emissao: (tag('dhEmi', ide||infNFe) || tag('dEmi', ide||infNFe)).slice(0,10),
+      natureza_operacao: tag('natOp', ide||infNFe),
+      emitente_cnpj:  tag('CNPJ', emit) || tag('CPF', emit),
+      emitente_razao: tag('xNome', emit),
+      emitente_uf:    tag('UF', emit ? emit.getElementsByTagName('enderEmit')[0] : null),
+      destinatario_cnpj:  tag('CNPJ', dest) || tag('CPF', dest),
+      destinatario_razao: tag('xNome', dest),
+      valor_produtos: tagF('vProd', total),
+      valor_frete:    tagF('vFrete', total),
+      valor_seguro:   tagF('vSeg', total),
+      valor_desconto: tagF('vDesc', total),
+      valor_outros:   tagF('vOutro', total),
+      valor_total:    tagF('vNF', total) || tagF('vNF', doc),
+      base_icms:      tagF('vBC', total),
+      valor_icms:     tagF('vICMS', total),
+      valor_ipi:      tagF('vIPI', total),
+      valor_pis:      tagF('vPIS', total),
+      valor_cofins:   tagF('vCOFINS', total),
       valor_iss: 0,
     };
     // Itens
-    result.itens = Array.from(doc.querySelectorAll('det')).map((det, idx) => ({
-      numero_item:    parseInt(det.getAttribute('nItem') || idx+1),
-      codigo_produto: get('cProd', det),
-      descricao:      get('xProd', det),
-      ncm:            get('NCM', det),
-      cfop:           get('CFOP', det),
-      unidade:        get('uCom', det),
-      quantidade:     getFloat('qCom', det),
-      valor_unitario: getFloat('vUnCom', det),
-      valor_total:    getFloat('vProd', det),
-      base_icms:      getFloat('vBC', det),
-      aliquota_icms:  getFloat('pICMS', det),
-      valor_icms:     getFloat('vICMS', det),
-    }));
-    // Chave da URL ou atributo Id
-    if (!result.chave_acesso) {
-      const id = doc.querySelector('[Id]')?.getAttribute('Id') || '';
-      result.chave_acesso = id.replace(/^NFe/, '').replace(/[^0-9]/g,'').slice(0,44);
-    }
+    result.itens = Array.from(doc.getElementsByTagName('det')).map((det, idx) => {
+      const prod = det.getElementsByTagName('prod')[0];
+      const imposto = det.getElementsByTagName('imposto')[0];
+      const icms = imposto ? imposto.getElementsByTagName('ICMS')[0] : null;
+      const icmsGrp = icms ? icms.firstElementChild : null;
+      return {
+        numero_item:    parseInt(det.getAttribute('nItem') || idx+1),
+        codigo_produto: tag('cProd', prod),
+        descricao:      tag('xProd', prod),
+        ncm:            tag('NCM', prod),
+        cfop:           tag('CFOP', prod),
+        unidade:        tag('uCom', prod),
+        quantidade:     tagF('qCom', prod),
+        valor_unitario: tagF('vUnCom', prod),
+        valor_total:    tagF('vProd', prod),
+        base_icms:      tagF('vBC', icmsGrp),
+        aliquota_icms:  tagF('pICMS', icmsGrp),
+        valor_icms:     tagF('vICMS', icmsGrp),
+      };
+    });
   }
   else if (tipo === 'NFSe') {
-    const inf = doc.querySelector('InfNfse, Nfse') || doc;
+    const inf = doc.getElementsByTagName('InfNfse')[0] ||
+                doc.getElementsByTagName('Nfse')[0] || doc;
+    const prest = doc.getElementsByTagName('PrestadorServico')[0];
+    const toma  = doc.getElementsByTagName('TomadorServico')[0];
+    const serv  = doc.getElementsByTagName('Servico')[0];
+    const vals  = serv ? serv.getElementsByTagName('Valores')[0] : null;
+
     result = {
       ...result,
-      chave_acesso: get('CodigoVerificacao', inf) || get('Numero', inf),
-      numero: get('Numero', inf) || get('NumeroNfse', inf),
+      chave_acesso: tag('CodigoVerificacao', inf) || tag('Numero', inf),
+      numero: tag('Numero', inf) || tag('NumeroNfse', inf),
       serie: '',
-      data_emissao: (get('DataEmissao', inf) || '').slice(0,10),
-      natureza_operacao: get('DiscriminacaoServicos', inf) || get('ItemListaServico', inf),
-      emitente_cnpj:  get('PrestadorServico Cnpj', inf) || get('CpfCnpj Cnpj', inf),
-      emitente_razao: get('PrestadorServico RazaoSocial', inf),
-      emitente_uf: '',
-      destinatario_cnpj:  get('TomadorServico CpfCnpj Cnpj', inf),
-      destinatario_razao: get('TomadorServico RazaoSocial', inf),
+      data_emissao: (tag('DataEmissaoRps', inf) || tag('DataEmissao', inf) || '').slice(0,10),
+      natureza_operacao: tag('Discriminacao', serv) || tag('ItemListaServico', serv) || 'SERVIÇO',
+      emitente_cnpj:  tag('Cnpj', prest ? prest.getElementsByTagName('CpfCnpj')[0] : null) || tag('Cnpj', prest),
+      emitente_razao: tag('RazaoSocial', prest),
+      emitente_uf:    tag('Uf', prest ? prest.getElementsByTagName('Endereco')[0] : null),
+      destinatario_cnpj:  tag('Cnpj', toma ? toma.getElementsByTagName('CpfCnpj')[0] : null),
+      destinatario_razao: tag('RazaoSocial', toma),
       valor_produtos: 0,
-      valor_total:    getFloat('ValorLiquidoNfse', inf) || getFloat('ValorServicos', inf),
-      valor_iss:      getFloat('ValorIss', inf),
+      valor_total:    tagF('ValorLiquidoNfse', inf) || tagF('ValorServicos', vals||inf),
+      valor_iss:      tagF('ValorIss', vals||inf),
       base_icms: 0, valor_icms: 0, valor_ipi: 0,
-      valor_pis:    getFloat('ValorPis', inf),
-      valor_cofins: getFloat('ValorCofins', inf),
-      valor_ir:     getFloat('ValorIr', inf),
-      valor_csll:   getFloat('ValorCsll', inf),
+      valor_pis:    tagF('ValorPis', vals||inf),
+      valor_cofins: tagF('ValorCofins', vals||inf),
+      valor_ir:     tagF('ValorIr', vals||inf),
+      valor_csll:   tagF('ValorCsll', vals||inf),
       itens: [],
     };
   }
   else if (tipo === 'CTe') {
-    const inf = doc.querySelector('infCte') || doc;
+    const inf  = doc.getElementsByTagName('infCte')[0] || doc;
+    const emit = doc.getElementsByTagName('emit')[0];
+    const ide  = doc.getElementsByTagName('ide')[0];
+    const vPrest = doc.getElementsByTagName('vTPrest')[0];
+    const icms = doc.getElementsByTagName('ICMSCont')[0] || doc.getElementsByTagName('ICMS')[0];
+
+    let chave = '';
+    const infEl = doc.getElementsByTagName('infCte')[0];
+    if(infEl) chave = (infEl.getAttribute('Id')||'').replace(/^CTe/,'');
+    chave = chave.replace(/[^0-9]/g,'').slice(0,44);
+
     result = {
       ...result,
-      chave_acesso: (doc.querySelector('[Id]')?.getAttribute('Id')||'').replace(/^CTe/,'').slice(0,44),
-      numero: get('nCT', inf),
-      serie:  get('serie', inf),
-      data_emissao: (get('dhEmi', inf) || get('dEmi', inf)).slice(0,10),
+      chave_acesso: chave,
+      numero: tag('nCT', ide||inf),
+      serie:  tag('serie', ide||inf),
+      data_emissao: (tag('dhEmi', ide||inf) || tag('dEmi', ide||inf)).slice(0,10),
       natureza_operacao: 'TRANSPORTE',
-      emitente_cnpj:  get('emit CNPJ', inf),
-      emitente_razao: get('emit xNome', inf),
-      emitente_uf:    get('emit enderEmit UF', inf),
-      destinatario_cnpj:  get('dest CNPJ', inf) || get('toma03 CNPJ', inf) || get('toma04 CNPJ', inf),
-      destinatario_razao: get('dest xNome', inf) || get('toma03 xNome', inf),
-      valor_total:    getFloat('vTPrest', inf),
-      valor_frete:    getFloat('vTPrest', inf),
-      valor_icms:     getFloat('vICMS', inf),
-      base_icms:      getFloat('vBC', inf),
+      emitente_cnpj:  tag('CNPJ', emit) || tag('CPF', emit),
+      emitente_razao: tag('xNome', emit),
+      emitente_uf:    tag('UF', emit ? emit.getElementsByTagName('enderEmit')[0] : null),
+      destinatario_cnpj:  tag('CNPJ', doc.getElementsByTagName('dest')[0]) ||
+                          tag('CNPJ', doc.getElementsByTagName('toma03')[0]) ||
+                          tag('CNPJ', doc.getElementsByTagName('toma04')[0]),
+      destinatario_razao: tag('xNome', doc.getElementsByTagName('dest')[0]) ||
+                          tag('xNome', doc.getElementsByTagName('toma03')[0]),
+      valor_total:  tagF('vTPrest', doc),
+      valor_frete:  tagF('vTPrest', doc),
+      valor_icms:   tagF('vICMS', icms),
+      base_icms:    tagF('vBC', icms),
       valor_pis: 0, valor_cofins: 0, valor_iss: 0, valor_ipi: 0,
       itens: [],
     };
@@ -3320,6 +3382,24 @@ async function init(){
     document.getElementById('nav-user').textContent=currentUser.nome;
     go('dashboard');
   }else{showLogin();}
+  // Auto-refresh a cada 60 segundos com countdown visual
+  let _refreshSecs = 60;
+  const _timerEl = () => document.getElementById('refresh-countdown');
+  setInterval(()=>{
+    _refreshSecs--;
+    if(_timerEl()) _timerEl().textContent = _refreshSecs;
+    if(_refreshSecs <= 0){
+      _refreshSecs = 60;
+      if(_timerEl()) _timerEl().textContent = '60';
+      if(currentPage && currentUser){
+        const p=PAGES[currentPage];
+        if(p && p.fn){
+          const c=document.getElementById('content');
+          if(c) p.fn(c);
+        }
+      }
+    }
+  }, 1000);
 }
 window.addEventListener('DOMContentLoaded',init);
 </script>
