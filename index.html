@@ -871,27 +871,53 @@ async function cpSalvar(){
   const venc=document.getElementById('cpf-vencimento').value;
   const valor=Number(document.getElementById('cpf-valor').value||0);
   const recorr=parseInt(document.getElementById('cpf-recorrencia').value)||1;
-  if(!forn||!venc||!valor){toast('Preencha fornecedor, vencimento e valor!','err');return;}
+  if(!forn){toast('Informe o fornecedor!','err');return;}
+  if(!venc){toast('Informe o vencimento!','err');return;}
+  if(!valor||valor<=0){toast('Informe um valor válido!','err');return;}
+
+  const dtPgto=document.getElementById('cpf-dt_pgto').value||null;
+  const vlPago=document.getElementById('cpf-valor_pago').value;
   const base={
-    empresa:emp,data_lanc:document.getElementById('cpf-data_lanc').value,
-    tipo_despesa:document.getElementById('cpf-tipo').value.trim(),
-    fornecedor:forn,vencimento:venc,valor,
-    descricao_adicional:document.getElementById('cpf-descricao').value.trim(),
-    forma_pagamento:document.getElementById('cpf-forma').value,
-    categoria:document.getElementById('cpf-categoria').value.trim(),
+    empresa:emp,
+    data_lanc:document.getElementById('cpf-data_lanc').value||today(),
+    tipo_despesa:document.getElementById('cpf-tipo').value.trim()||null,
+    fornecedor:forn,
+    vencimento:venc,
+    valor,
+    descricao_adicional:document.getElementById('cpf-descricao').value.trim()||null,
+    forma_pagamento:document.getElementById('cpf-forma').value||null,
+    categoria:document.getElementById('cpf-categoria').value.trim()||null,
     conta_contabil:document.getElementById('cpf-conta-contabil').value||null,
-    natureza:document.getElementById('cpf-natureza').value,
-    data_pagamento:document.getElementById('cpf-dt_pgto').value||null,
-    valor_pago:document.getElementById('cpf-valor_pago').value?Number(document.getElementById('cpf-valor_pago').value):null,
-    status:document.getElementById('cpf-status').value,
-    observacao:document.getElementById('cpf-observacao').value.trim()
+    natureza:document.getElementById('cpf-natureza').value||'DESP_OPERACIONAL',
+    data_pagamento:dtPgto,
+    valor_pago:vlPago?Number(vlPago):null,
+    status:document.getElementById('cpf-status').value||'open',
+    observacao:document.getElementById('cpf-observacao').value.trim()||null
   };
+
+  // Remover chaves com valor undefined
+  Object.keys(base).forEach(k=>{if(base[k]===undefined)delete base[k];});
+
   try{
-    if(cpEditId){base.parcela=document.getElementById('cpf-parcela').value||'1/1';await supa.from('contas_pagar').update(base).eq('id',cpEditId);toast('Atualizado!','ok');}
-    else{for(let i=0;i<recorr;i++)await supa.from('contas_pagar').insert({...base,vencimento:addMonths(venc,i),parcela:recorr>1?`${i+1}/${recorr}`:'1/1'});toast(recorr>1?`${recorr} parcelas criadas!`:'Salvo!','ok');}
+    if(cpEditId){
+      base.parcela=document.getElementById('cpf-parcela').value||'1/1';
+      const{error}=await supa.from('contas_pagar').update(base).eq('id',cpEditId);
+      if(error)throw new Error(error.message);
+      toast('Conta atualizada!','ok');
+    } else {
+      for(let i=0;i<recorr;i++){
+        const row={...base,vencimento:addMonths(venc,i),parcela:recorr>1?`${i+1}/${recorr}`:'1/1'};
+        const{error}=await supa.from('contas_pagar').insert(row);
+        if(error)throw new Error(`Parcela ${i+1}: ${error.message}`);
+      }
+      toast(recorr>1?`${recorr} parcelas criadas!`:'Conta salva!','ok');
+    }
     document.getElementById('cp-form-modal').classList.remove('open');
     await pgContasPagar(document.getElementById('content'));
-  }catch(e){toast('Erro: '+e.message,'err');}
+  }catch(e){
+    console.error('cpSalvar erro:',e);
+    toast('Erro ao salvar: '+e.message,'err');
+  }
 }
 
 // TELA DE BAIXA
@@ -918,31 +944,58 @@ async function cpAbrirBaixa(id){
 async function baixaConfirmar(){
   const id=parseInt(document.getElementById('baixa-id').value);
   const data=document.getElementById('baixa-data-pgto').value;
-  const valor=parseFloat(document.getElementById('baixa-valor-pago').value);
+  const valorStr=document.getElementById('baixa-valor-pago').value;
+  const valor=parseFloat(valorStr);
   const forma=document.getElementById('baixa-forma').value;
-  const contaId=parseInt(document.getElementById('baixa-conta').value)||null;
-  if(!data||!valor){toast('Preencha data e valor!','err');return;}
-  const rec=cpRec.find(r=>r.id===id);if(!rec)return;
+  const contaIdRaw=document.getElementById('baixa-conta').value;
+  const contaId=contaIdRaw&&!isNaN(parseInt(contaIdRaw))?parseInt(contaIdRaw):null;
+
+  if(!data){toast('Informe a data do pagamento!','err');return;}
+  if(!valorStr||isNaN(valor)||valor<=0){toast('Informe um valor pago válido!','err');return;}
+
+  const rec=cpRec.find(r=>r.id===id);
+  if(!rec){toast('Registro não encontrado. Recarregue a página.','err');return;}
+
+  const updateObj={
+    status:'paid',
+    data_pagamento:data,
+    valor_pago:valor,
+    forma_pagamento:forma||null,
+    conta_bancaria_id:contaId,
+    baixado_por:currentUser?.nome||'sistema',
+    baixado_em:new Date().toISOString()
+  };
+  // Remover undefined/null opcionais que podem causar erro
+  if(!contaId)delete updateObj.conta_bancaria_id;
+
   try{
-    await supa.from('contas_pagar').update({
-      status:'paid',data_pagamento:data,valor_pago:valor,
-      forma_pagamento:forma,conta_bancaria_id:contaId,
-      baixado_por:currentUser?.nome||'',baixado_em:new Date().toISOString()
-    }).eq('id',id);
-    // Gerar lançamento contábil automático
+    const{error}=await supa.from('contas_pagar').update(updateObj).eq('id',id);
+    if(error)throw new Error(error.message);
+
+    // Gerar lançamento contábil se tiver conta contábil vinculada
     if(rec.conta_contabil){
-      await dbAdd('lancamentos_contabeis',{
-        empresa:rec.empresa||'DL',data_competencia:data,data_caixa:data,
-        historico:`Pgto ${rec.fornecedor} — ${rec.tipo_despesa||'Despesa'}`,
-        valor,conta_debito:rec.conta_contabil,
-        conta_credito:'1.1.01',  // caixa/banco — pode vincular a conta correta
-        origem_tipo:'contas_pagar',origem_id:id,conciliado:false
+      const{error:e2}=await supa.from('lancamentos_contabeis').insert({
+        empresa:rec.empresa||'DL',
+        data_competencia:data,
+        data_caixa:data,
+        historico:`Pgto ${rec.fornecedor||''} — ${rec.tipo_despesa||'Despesa'}`,
+        valor,
+        conta_debito:rec.conta_contabil,
+        conta_credito:'1.1.01',
+        origem_tipo:'contas_pagar',
+        origem_id:id,
+        conciliado:false
       });
+      if(e2)console.warn('Lançamento contábil não gerado:',e2.message);
     }
+
     document.getElementById('cp-baixa-modal').classList.remove('open');
-    toast('Baixa realizada! Lançamento contábil gerado.','ok');
+    toast('✅ Baixa realizada com sucesso!','ok');
     await pgContasPagar(document.getElementById('content'));
-  }catch(e){toast('Erro: '+e.message,'err');}
+  }catch(e){
+    console.error('baixaConfirmar erro:',e);
+    toast('Erro na baixa: '+e.message,'err');
+  }
 }
 
 async function baixaExcluir(){
@@ -1549,25 +1602,55 @@ function gerarParcelasRec(){
 
 async function salvarReceita(){
   if(parcRecTemp.length===0){toast('Gere as parcelas primeiro!','err');return;}
-  try {
   const valor=parseFloat(document.getElementById('rec-valor').value)||0;
   const qtde=parseInt(document.getElementById('rec-qtde').value)||1;
-  if(valor<=0){toast('Informe o valor!','err');return;}
-  const [cats,contas,clientes,formas]=await Promise.all([dbGet('categorias_receita'),dbGet('contas'),dbGet('clientes'),dbGet('formas_pagamento')]);
-  const emp=document.getElementById('rec-emp').value;
-  const tipoId=parseInt(document.getElementById('rec-tipo').value);
-  const contaId=parseInt(document.getElementById('rec-conta').value);
-  const cliId=parseInt(document.getElementById('rec-cli').value);
-  const formaId=parseInt(document.getElementById('rec-forma').value);
-  const cat=cats.find(c=>c.id===tipoId);const conta=contas.find(c=>c.id===contaId);
-  const cli=clientes.find(c=>c.id===cliId);const forma=formas.find(f=>f.id===formaId);
-  const recId=await dbAdd('receitas',{empresa:emp,data_lancamento:today(),conta_id:contaId,conta_nome:conta?.nome,tipo_id:tipoId,tipo_nome:cat?.nome,cliente_id:cliId,cliente_nome:cli?.nome,forma_id:formaId,forma_nome:forma?.nome,descricao:document.getElementById('rec-desc').value,data_primeira:document.getElementById('rec-data1').value,valor_parcela:valor,qtde_parcelas:qtde,valor_total:valor*qtde,recebido:parcRecTemp.every(p=>p.recebido)});
-  for(const p of parcRecTemp) await dbAdd('parcelas_receita',{empresa:emp,receita_id:recId,numero:p.numero,total:p.total,vencimento:p.vencimento,valor:p.valor,forma_id:formaId,forma_nome:forma?.nome,conta_id:contaId,conta_nome:conta?.nome,tipo_nome:cat?.nome,cliente_nome:cli?.nome,descricao:document.getElementById('rec-desc').value,dt_pagamento:p.recebido?today():null,valor_pago:p.recebido?p.valor:0,categoria:cat?.nome});
-  document.getElementById('modal-rec').classList.remove('open');
-  toast('Receita salva com sucesso!','ok');
-  parcRecTemp=[];
-  pgReceitas(document.getElementById('content'));
-  } catch(e) { toast('Erro ao salvar receita: '+e.message,'err'); }
+  if(valor<=0){toast('Informe o valor da parcela!','err');return;}
+  try{
+    const [cats,contas,clientes,formas]=await Promise.all([
+      dbGet('categorias_receita'),dbGet('contas'),
+      dbGet('clientes'),dbGet('formas_pagamento')
+    ]);
+    const emp=document.getElementById('rec-emp').value;
+    const tipoId=parseInt(document.getElementById('rec-tipo').value)||null;
+    const contaId=parseInt(document.getElementById('rec-conta').value)||null;
+    const cliId=parseInt(document.getElementById('rec-cli').value)||null;
+    const formaId=parseInt(document.getElementById('rec-forma').value)||null;
+    const cat=tipoId?cats.find(c=>c.id===tipoId):null;
+    const conta=contaId?contas.find(c=>c.id===contaId):null;
+    const cli=cliId?clientes.find(c=>c.id===cliId):null;
+    const forma=formaId?formas.find(f=>f.id===formaId):null;
+    const desc=document.getElementById('rec-desc').value||null;
+    const data1=document.getElementById('rec-data1').value||today();
+
+    const recId=await dbAdd('receitas',{
+      empresa:emp,data_lancamento:today(),
+      conta_id:contaId,conta_nome:conta?.nome||null,
+      tipo_id:tipoId,tipo_nome:cat?.nome||null,
+      cliente_id:cliId,cliente_nome:cli?.nome||null,
+      forma_id:formaId,forma_nome:forma?.nome||null,
+      descricao:desc,data_primeira:data1,
+      valor_parcela:valor,qtde_parcelas:qtde,valor_total:valor*qtde,
+      recebido:parcRecTemp.every(p=>p.recebido)
+    });
+    for(const p of parcRecTemp){
+      await dbAdd('parcelas_receita',{
+        empresa:emp,receita_id:recId,numero:p.numero,total:p.total,
+        vencimento:p.vencimento,valor:p.valor,
+        forma_id:formaId,forma_nome:forma?.nome||null,
+        conta_id:contaId,conta_nome:conta?.nome||null,
+        tipo_nome:cat?.nome||null,cliente_nome:cli?.nome||null,
+        descricao:desc,dt_pagamento:p.recebido?today():null,
+        valor_pago:p.recebido?p.valor:0,categoria:cat?.nome||null
+      });
+    }
+    document.getElementById('modal-rec').classList.remove('open');
+    toast('Receita salva com sucesso!','ok');
+    parcRecTemp=[];
+    pgReceitas(document.getElementById('content'));
+  }catch(e){
+    console.error('salvarReceita:',e);
+    toast('Erro ao salvar receita: '+e.message,'err');
+  }
 }
 
 async function excluirReceita(id){
@@ -1756,20 +1839,60 @@ function gerarParcelasDesp(){
 }
 
 async function salvarDespesa(){
-  if(parcDespTemp.length===0){toast('Gere as parcelas!','err');return;}
-  const valor=parseFloat(document.getElementById('desp-valor').value)||0;const qtde=parseInt(document.getElementById('desp-qtde').value)||1;
-  if(valor<=0){toast('Informe o valor!','err');return;}
-  try {
-  const [cats,contas,forns,formas]=await Promise.all([dbGet('categorias_despesa'),dbGet('contas'),dbGet('fornecedores'),dbGet('formas_pagamento')]);
-  const emp=document.getElementById('desp-emp').value;
-  const catId=parseInt(document.getElementById('desp-cat').value);const contaId=parseInt(document.getElementById('desp-conta').value);
-  const fornId=parseInt(document.getElementById('desp-forn').value);const formaId=parseInt(document.getElementById('desp-forma').value);
-  const cat=cats.find(c=>c.id===catId);const conta=contas.find(c=>c.id===contaId);
-  const forn=forns.find(f=>f.id===fornId);const forma=formas.find(f=>f.id===formaId);
-  const despId=await dbAdd('despesas',{empresa:emp,data_lancamento:today(),data_emissao:today(),conta_id:contaId,conta_nome:conta?.nome,cat_id:catId,cat_nome:cat?.nome,subcat:cat?.subcategoria,forn_id:fornId,forn_nome:forn?.nome,forma_id:formaId,forma_nome:forma?.nome,descricao:document.getElementById('desp-desc').value,data_primeira:document.getElementById('desp-data1').value,valor_parcela:valor,qtde_parcelas:qtde,valor_total:valor*qtde,quitado:parcDespTemp.every(p=>p.quitado)});
-  for(const p of parcDespTemp) await dbAdd('parcelas_despesa',{empresa:emp,despesa_id:despId,numero:p.numero,total:p.total,vencimento:p.vencimento,valor:p.valor,forma_id:formaId,forma_nome:forma?.nome,conta_id:contaId,conta_nome:conta?.nome,cat_nome:cat?.nome,forn_nome:forn?.nome,descricao:document.getElementById('desp-desc').value,dt_pagamento:p.quitado?today():null,valor_pago:p.quitado?p.valor:0,categoria:cat?.nome});
-  document.getElementById('modal-desp').classList.remove('open');toast('Despesa salva!','ok');parcDespTemp=[];pgDespesas(document.getElementById('content'));
-  } catch(e) { toast('Erro ao salvar despesa: '+e.message,'err'); }
+  if(parcDespTemp.length===0){toast('Gere as parcelas primeiro!','err');return;}
+  const valor=parseFloat(document.getElementById('desp-valor').value)||0;
+  const qtde=parseInt(document.getElementById('desp-qtde').value)||1;
+  if(valor<=0){toast('Informe o valor da parcela!','err');return;}
+  try{
+    const [cats,contas,forns,formas]=await Promise.all([
+      dbGet('categorias_despesa'),dbGet('contas'),
+      dbGet('fornecedores'),dbGet('formas_pagamento')
+    ]);
+    const emp=document.getElementById('desp-emp').value;
+    const catIdRaw=document.getElementById('desp-cat').value;
+    const contaIdRaw=document.getElementById('desp-conta').value;
+    const fornIdRaw=document.getElementById('desp-forn').value;
+    const formaIdRaw=document.getElementById('desp-forma').value;
+    const catId=catIdRaw?parseInt(catIdRaw):null;
+    const contaId=contaIdRaw?parseInt(contaIdRaw):null;
+    const fornId=fornIdRaw?parseInt(fornIdRaw):null;
+    const formaId=formaIdRaw?parseInt(formaIdRaw):null;
+    const cat=catId?cats.find(c=>c.id===catId):null;
+    const conta=contaId?contas.find(c=>c.id===contaId):null;
+    const forn=fornId?forns.find(f=>f.id===fornId):null;
+    const forma=formaId?formas.find(f=>f.id===formaId):null;
+    const desc=document.getElementById('desp-desc').value||null;
+    const data1=document.getElementById('desp-data1').value||today();
+
+    const despId=await dbAdd('despesas',{
+      empresa:emp,data_lancamento:today(),data_emissao:today(),
+      conta_id:contaId,conta_nome:conta?.nome||null,
+      cat_id:catId,cat_nome:cat?.nome||null,subcat:cat?.subcategoria||null,
+      forn_id:fornId,forn_nome:forn?.nome||null,
+      forma_id:formaId,forma_nome:forma?.nome||null,
+      descricao:desc,data_primeira:data1,
+      valor_parcela:valor,qtde_parcelas:qtde,valor_total:valor*qtde,
+      quitado:parcDespTemp.every(p=>p.quitado)
+    });
+    for(const p of parcDespTemp){
+      await dbAdd('parcelas_despesa',{
+        empresa:emp,despesa_id:despId,numero:p.numero,total:p.total,
+        vencimento:p.vencimento,valor:p.valor,
+        forma_id:formaId,forma_nome:forma?.nome||null,
+        conta_id:contaId,conta_nome:conta?.nome||null,
+        cat_nome:cat?.nome||null,forn_nome:forn?.nome||null,
+        descricao:desc,dt_pagamento:p.quitado?today():null,
+        valor_pago:p.quitado?p.valor:0,categoria:cat?.nome||null
+      });
+    }
+    document.getElementById('modal-desp').classList.remove('open');
+    toast('Despesa salva!','ok');
+    parcDespTemp=[];
+    pgDespesas(document.getElementById('content'));
+  }catch(e){
+    console.error('salvarDespesa:',e);
+    toast('Erro ao salvar despesa: '+e.message,'err');
+  }
 }
 async function excluirDespesa(id){if(!(await confirm2('Excluir?')))return;await dbDelete('despesas',id);pgDespesas(document.getElementById('content'));}
 
