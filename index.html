@@ -246,6 +246,13 @@ textarea.field{height:auto;min-height:64px;resize:vertical}
       </div>
     </div>
     <div class="nav-item" tabindex="0">
+      🧾 Fiscal <span class="arr">▾</span>
+      <div class="nav-dropdown">
+        <button class="nav-dd-item" onclick="go('notas_fiscais')" data-page="notas_fiscais">📥 Notas Recebidas</button>
+        <button class="nav-dd-item" onclick="go('fiscal_dashboard')" data-page="fiscal_dashboard">📊 Painel Fiscal</button>
+      </div>
+    </div>
+    <div class="nav-item" tabindex="0">
       📈 Análise <span class="arr">▾</span>
       <div class="nav-dropdown">
         <button class="nav-dd-item" onclick="go('extrato')" data-page="extrato">📋 Extrato Comparativo</button>
@@ -430,6 +437,8 @@ const PAGES={
   conciliacao:{label:'Conciliação Bancária',fn:pgConciliacao},
   dre:{label:'DRE — Demonstração do Resultado',fn:pgDRE},
   balanco:{label:'Balanço Patrimonial',fn:pgBalanco},
+  notas_fiscais:{label:'Notas Fiscais Recebidas',fn:pgNotasFiscais},
+  fiscal_dashboard:{label:'Painel Fiscal',fn:pgFiscalDashboard},
   plano_contas:{label:'Plano de Contas',fn:pgPlanoContas},
   cadastros:{label:'Cadastros',fn:pgCadastros},
   usuarios:{label:'Usuários',fn:pgUsuarios},
@@ -2488,6 +2497,816 @@ async function exportBk(){const bk={};for(const t of ALL_TABLES)bk[t]=await dbGe
 async function importBk(){const file=document.getElementById('bk-file').files[0];if(!file){toast('Selecione!','err');return;}if(!(await confirm2('ATENÇÃO: Todos os dados serão substituídos!')))return;const bk=JSON.parse(await file.text());for(const[s,d]of Object.entries(bk)){if(ALL_TABLES.includes(s)){await dbClear(s);for(const it of d)await dbPut(s,it);}}toast('Restaurado!','ok');setTimeout(()=>location.reload(),1500);}
 async function exportCSV(store,fn){const d=await dbGet(store);if(!d.length){toast('Sem dados','info');return;}const h=Object.keys(d[0]);const rows=d.map(r=>h.map(k=>`"${(r[k]??'').toString().replace(/"/g,'""')}"`).join(','));const blob=new Blob(['\uFEFF'+[h.join(','),...rows].join('\n')],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${fn}_${today()}.csv`;a.click();}
 async function limparTudo(){if(!(await confirm2('ATENÇÃO: Apagará TODOS os lançamentos!')))return;for(const t of['receitas','parcelas_receita','despesas','parcelas_despesa','transferencias','poupanca','lancamentos_cartao','contas_pagar'])await dbClear(t);toast('Limpo!','ok');go('dashboard');}
+
+// ═══════════════════════════════════════════════════════
+// MÓDULO FISCAL — Notas Fiscais Recebidas (NF-e / NFS-e / CT-e)
+// ═══════════════════════════════════════════════════════
+
+// ── PARSER XML ──
+function parseNFe(xmlStr) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlStr, 'text/xml');
+  const get = (sel, base) => {
+    const el = (base || doc).querySelector(sel);
+    return el ? el.textContent.trim() : '';
+  };
+  const getFloat = (sel, base) => parseFloat(get(sel, base) || '0') || 0;
+
+  // Detectar tipo
+  const isNFe  = doc.querySelector('NFe, nfeProc') !== null;
+  const isNFSe = doc.querySelector('CompNfse, nfse, RPS') !== null;
+  const isCTe  = doc.querySelector('CTe, cteProc') !== null;
+  const tipo   = isCTe ? 'CTe' : isNFSe ? 'NFSe' : 'NFe';
+
+  let result = { tipo, raw: xmlStr };
+
+  if (tipo === 'NFe') {
+    // Tenta pegar de dentro de nfeProc ou NFe diretamente
+    const infNFe = doc.querySelector('infNFe') || doc;
+    result = {
+      ...result,
+      chave_acesso: get('infNFe', doc).replace(/[^0-9]/g,'').slice(0,44) ||
+                    doc.querySelector('chNFe')?.textContent?.trim() || '',
+      numero:  get('nNF', infNFe),
+      serie:   get('serie', infNFe),
+      data_emissao: (get('dhEmi', infNFe) || get('dEmi', infNFe)).slice(0,10),
+      natureza_operacao: get('natOp', infNFe),
+      emitente_cnpj:  get('emit CNPJ', infNFe) || get('CNPJ', doc.querySelector('emit')),
+      emitente_razao: get('emit xNome', infNFe) || get('xNome', doc.querySelector('emit')),
+      emitente_uf:    get('emit enderEmit UF', infNFe),
+      destinatario_cnpj:  get('dest CNPJ', infNFe) || get('dest CPF', infNFe),
+      destinatario_razao: get('dest xNome', infNFe),
+      valor_produtos: getFloat('vProd', infNFe),
+      valor_frete:    getFloat('vFrete', infNFe),
+      valor_seguro:   getFloat('vSeg', infNFe),
+      valor_desconto: getFloat('vDesc', infNFe),
+      valor_outros:   getFloat('vOutro', infNFe),
+      valor_total:    getFloat('vNF', infNFe),
+      base_icms:  getFloat('vBC', infNFe),
+      valor_icms: getFloat('vICMS', infNFe),
+      valor_ipi:  getFloat('vIPI', infNFe),
+      valor_pis:  getFloat('vPIS', infNFe),
+      valor_cofins: getFloat('vCOFINS', infNFe),
+      valor_iss: 0,
+    };
+    // Itens
+    result.itens = Array.from(doc.querySelectorAll('det')).map((det, idx) => ({
+      numero_item:    parseInt(det.getAttribute('nItem') || idx+1),
+      codigo_produto: get('cProd', det),
+      descricao:      get('xProd', det),
+      ncm:            get('NCM', det),
+      cfop:           get('CFOP', det),
+      unidade:        get('uCom', det),
+      quantidade:     getFloat('qCom', det),
+      valor_unitario: getFloat('vUnCom', det),
+      valor_total:    getFloat('vProd', det),
+      base_icms:      getFloat('vBC', det),
+      aliquota_icms:  getFloat('pICMS', det),
+      valor_icms:     getFloat('vICMS', det),
+    }));
+    // Chave da URL ou atributo Id
+    if (!result.chave_acesso) {
+      const id = doc.querySelector('[Id]')?.getAttribute('Id') || '';
+      result.chave_acesso = id.replace(/^NFe/, '').replace(/[^0-9]/g,'').slice(0,44);
+    }
+  }
+  else if (tipo === 'NFSe') {
+    const inf = doc.querySelector('InfNfse, Nfse') || doc;
+    result = {
+      ...result,
+      chave_acesso: get('CodigoVerificacao', inf) || get('Numero', inf),
+      numero: get('Numero', inf) || get('NumeroNfse', inf),
+      serie: '',
+      data_emissao: (get('DataEmissao', inf) || '').slice(0,10),
+      natureza_operacao: get('DiscriminacaoServicos', inf) || get('ItemListaServico', inf),
+      emitente_cnpj:  get('PrestadorServico Cnpj', inf) || get('CpfCnpj Cnpj', inf),
+      emitente_razao: get('PrestadorServico RazaoSocial', inf),
+      emitente_uf: '',
+      destinatario_cnpj:  get('TomadorServico CpfCnpj Cnpj', inf),
+      destinatario_razao: get('TomadorServico RazaoSocial', inf),
+      valor_produtos: 0,
+      valor_total:    getFloat('ValorLiquidoNfse', inf) || getFloat('ValorServicos', inf),
+      valor_iss:      getFloat('ValorIss', inf),
+      base_icms: 0, valor_icms: 0, valor_ipi: 0,
+      valor_pis:    getFloat('ValorPis', inf),
+      valor_cofins: getFloat('ValorCofins', inf),
+      valor_ir:     getFloat('ValorIr', inf),
+      valor_csll:   getFloat('ValorCsll', inf),
+      itens: [],
+    };
+  }
+  else if (tipo === 'CTe') {
+    const inf = doc.querySelector('infCte') || doc;
+    result = {
+      ...result,
+      chave_acesso: (doc.querySelector('[Id]')?.getAttribute('Id')||'').replace(/^CTe/,'').slice(0,44),
+      numero: get('nCT', inf),
+      serie:  get('serie', inf),
+      data_emissao: (get('dhEmi', inf) || get('dEmi', inf)).slice(0,10),
+      natureza_operacao: 'TRANSPORTE',
+      emitente_cnpj:  get('emit CNPJ', inf),
+      emitente_razao: get('emit xNome', inf),
+      emitente_uf:    get('emit enderEmit UF', inf),
+      destinatario_cnpj:  get('dest CNPJ', inf) || get('toma03 CNPJ', inf) || get('toma04 CNPJ', inf),
+      destinatario_razao: get('dest xNome', inf) || get('toma03 xNome', inf),
+      valor_total:    getFloat('vTPrest', inf),
+      valor_frete:    getFloat('vTPrest', inf),
+      valor_icms:     getFloat('vICMS', inf),
+      base_icms:      getFloat('vBC', inf),
+      valor_pis: 0, valor_cofins: 0, valor_iss: 0, valor_ipi: 0,
+      itens: [],
+    };
+  }
+
+  // Formatar data
+  if (result.data_emissao) {
+    const d = result.data_emissao.replace('T',' ').slice(0,10);
+    result.data_emissao = d;
+    result.mes_competencia = d.slice(0,7);
+  }
+  return result;
+}
+
+// ── DANFE SIMPLIFICADO (HTML → PDF via print) ──
+function gerarDANFE(nota, itens) {
+  const fmtCNPJ = c => c ? c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5') : '';
+  const fmtDate = d => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-BR') : '';
+  const R2 = v => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  const tipoLabel = {NFe:'NF-e — Nota Fiscal Eletrônica',NFSe:'NFS-e — Nota Fiscal de Serviços',CTe:'CT-e — Conhecimento de Transporte'};
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>DANFE — ${nota.numero||''}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:10px;margin:0;padding:12px;color:#111}
+  .danfe-header{display:grid;grid-template-columns:180px 1fr 180px;gap:8px;border:1px solid #333;padding:8px;margin-bottom:6px}
+  .logo-box{border:1px solid #aaa;display:flex;align-items:center;justify-content:center;padding:6px;font-weight:900;font-size:12px;color:#b84a00;text-align:center}
+  .empresa-info h2{margin:0;font-size:13px} .empresa-info p{margin:2px 0;font-size:9px}
+  .danfe-title{background:#333;color:#fff;padding:6px;text-align:center;font-weight:900;font-size:11px}
+  .danfe-title .num{font-size:14px;font-weight:900} .danfe-title .serie{font-size:10px}
+  .section{border:1px solid #999;margin-bottom:4px;padding:4px 6px}
+  .section-title{font-weight:900;font-size:9px;text-transform:uppercase;background:#eee;margin:-4px -6px 4px;padding:2px 6px;color:#444}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px}
+  .field label{display:block;font-size:8px;font-weight:900;color:#555;text-transform:uppercase}
+  .field span{display:block;font-size:10px;border-bottom:1px dotted #999;min-height:14px;padding:1px 0}
+  table.itens{width:100%;border-collapse:collapse;font-size:9px}
+  table.itens th{background:#333;color:#fff;padding:3px 4px;text-align:left}
+  table.itens td{padding:2px 4px;border-bottom:1px solid #ddd}
+  table.itens tr:nth-child(even) td{background:#f8f8f8}
+  .totais-box{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-top:4px}
+  .tot-item{border:1px solid #ccc;padding:3px 5px;text-align:center}
+  .tot-item .tl{font-size:8px;font-weight:900;color:#555;text-transform:uppercase}
+  .tot-item .tv{font-size:11px;font-weight:900;color:#111}
+  .chave-box{background:#f0f0f0;border:1px solid #999;padding:4px 6px;font-family:monospace;font-size:9px;word-break:break-all;margin-bottom:4px}
+  .rodape{margin-top:8px;border-top:1px solid #ccc;padding-top:4px;font-size:8px;color:#666;text-align:center}
+  @media print{@page{margin:8mm}button{display:none!important}}
+</style></head><body>
+
+<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
+  <button onclick="window.print()" style="padding:6px 14px;background:#1f9e4a;color:#fff;border:none;border-radius:4px;font-weight:700;cursor:pointer">🖨 Imprimir</button>
+  <button onclick="window.close()" style="padding:6px 14px;background:#6b7280;color:#fff;border:none;border-radius:4px;cursor:pointer">Fechar</button>
+</div>
+
+<div class="danfe-header">
+  <div class="logo-box">MINEIRINHO<br>IMPORTAÇÃO<br>LTDA</div>
+  <div class="empresa-info">
+    <h2>${tipoLabel[nota.tipo]||'DOCUMENTO FISCAL'}</h2>
+    <p><strong>Emitente:</strong> ${esc(nota.emitente_razao||'')} — CNPJ: ${fmtCNPJ(nota.emitente_cnpj)}</p>
+    <p><strong>Destinatário:</strong> ${esc(nota.destinatario_razao||'')} — CNPJ: ${fmtCNPJ(nota.destinatario_cnpj)}</p>
+    <p><strong>Natureza:</strong> ${esc(nota.natureza_operacao||'')}</p>
+    <p><strong>Data Emissão:</strong> ${fmtDate(nota.data_emissao)}</p>
+  </div>
+  <div class="danfe-title">
+    <div>${nota.tipo||'NF-e'}</div>
+    <div class="num">Nº ${nota.numero||'—'}</div>
+    <div class="serie">Série: ${nota.serie||'—'}</div>
+    <div style="margin-top:6px;font-size:9px">EMPRESA: ${nota.empresa||'—'}</div>
+  </div>
+</div>
+
+${nota.chave_acesso ? `<div class="chave-box"><strong>Chave de Acesso:</strong> ${nota.chave_acesso.replace(/(\d{4})/g,'$1 ').trim()}</div>` : ''}
+
+${itens && itens.length > 0 ? `
+<div class="section">
+  <div class="section-title">Produtos / Serviços</div>
+  <table class="itens">
+    <thead><tr><th>#</th><th>Código</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>Un</th><th>Qtd</th><th>V.Unit</th><th>V.Total</th><th>BC ICMS</th><th>Alíq.</th><th>ICMS</th></tr></thead>
+    <tbody>${itens.map(it=>`<tr>
+      <td>${it.numero_item}</td><td>${esc(it.codigo_produto||'')}</td>
+      <td>${esc(it.descricao||'')}</td><td>${it.ncm||''}</td><td>${it.cfop||''}</td>
+      <td>${it.unidade||''}</td><td>${R2(it.quantidade)}</td>
+      <td>${R2(it.valor_unitario)}</td><td><strong>${R2(it.valor_total)}</strong></td>
+      <td>${R2(it.base_icms)}</td><td>${R2(it.aliquota_icms)}%</td><td>${R2(it.valor_icms)}</td>
+    </tr>`).join('')}</tbody>
+  </table>
+</div>` : ''}
+
+<div class="totais-box">
+  <div class="tot-item"><div class="tl">Valor Produtos</div><div class="tv">R$ ${R2(nota.valor_produtos)}</div></div>
+  <div class="tot-item"><div class="tl">Frete</div><div class="tv">R$ ${R2(nota.valor_frete)}</div></div>
+  <div class="tot-item"><div class="tl">Desconto</div><div class="tv">R$ ${R2(nota.valor_desconto)}</div></div>
+  <div class="tot-item" style="background:#333;color:#fff"><div class="tl" style="color:#ccc">VALOR TOTAL</div><div class="tv" style="color:#fff;font-size:14px">R$ ${R2(nota.valor_total)}</div></div>
+</div>
+
+<div class="section" style="margin-top:6px">
+  <div class="section-title">Impostos</div>
+  <div class="grid4">
+    ${nota.base_icms>0?`<div class="field"><label>Base ICMS</label><span>R$ ${R2(nota.base_icms)}</span></div>`:''}
+    ${nota.valor_icms>0?`<div class="field"><label>ICMS</label><span>R$ ${R2(nota.valor_icms)}</span></div>`:''}
+    ${nota.valor_ipi>0?`<div class="field"><label>IPI</label><span>R$ ${R2(nota.valor_ipi)}</span></div>`:''}
+    ${nota.valor_pis>0?`<div class="field"><label>PIS</label><span>R$ ${R2(nota.valor_pis)}</span></div>`:''}
+    ${nota.valor_cofins>0?`<div class="field"><label>COFINS</label><span>R$ ${R2(nota.valor_cofins)}</span></div>`:''}
+    ${nota.valor_iss>0?`<div class="field"><label>ISS</label><span>R$ ${R2(nota.valor_iss)}</span></div>`:''}
+    ${nota.valor_ir>0?`<div class="field"><label>IR Retido</label><span>R$ ${R2(nota.valor_ir)}</span></div>`:''}
+    ${nota.valor_csll>0?`<div class="field"><label>CSLL Retida</label><span>R$ ${R2(nota.valor_csll)}</span></div>`:''}
+  </div>
+</div>
+
+<div class="rodape">
+  Documento gerado pelo FinanceiroApp Pro — Mineirinho Importação Ltda — CNPJ: 45.565.286/0001-90<br>
+  Emissão do relatório: ${new Date().toLocaleString('pt-BR')}
+</div>
+</body></html>`;
+
+  const w = window.open('','','width=1000,height=800');
+  w.document.write(html);
+  w.document.close();
+}
+
+// ── PÁGINA PRINCIPAL — NOTAS FISCAIS ──
+async function pgNotasFiscais(c) {
+  const notas = await dbGet('notas_fiscais');
+  const fNotas = empF(notas, 'empresa');
+
+  // KPIs
+  const totalNF  = fNotas.length;
+  const totalVal = fNotas.reduce((s,n)=>s+(+n.valor_total||0),0);
+  const totalICMS= fNotas.reduce((s,n)=>s+(+n.valor_icms||0),0);
+  const totalISS = fNotas.reduce((s,n)=>s+(+n.valor_iss||0),0);
+  const pendVincular = fNotas.filter(n=>n.status==='recebida').length;
+
+  // Agrupar por mês
+  const porMes = {};
+  fNotas.forEach(n=>{
+    const m = n.mes_competencia||'Sem data';
+    if(!porMes[m]) porMes[m]={count:0,total:0,icms:0,iss:0};
+    porMes[m].count++;
+    porMes[m].total += +n.valor_total||0;
+    porMes[m].icms  += +n.valor_icms||0;
+    porMes[m].iss   += +n.valor_iss||0;
+  });
+  const mesesOrdenados = Object.keys(porMes).sort().reverse();
+
+  // Filtros ativos
+  const now = new Date();
+  const curMes = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  c.innerHTML = `<div style="display:flex;flex-direction:column;gap:14px">
+    <div class="sec-head">
+      <div class="sec-title">🧾 Notas Fiscais Recebidas</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label class="btn btn-blue btn-sm" style="cursor:pointer">
+          📂 Importar XML(s)
+          <input type="file" id="nf-upload" accept=".xml" multiple style="display:none" onchange="nfImportarXML(this.files)">
+        </label>
+        <button class="btn btn-white btn-sm" onclick="nfFiltrar()">🔍 Filtrar</button>
+        <button class="btn btn-white btn-sm" onclick="nfExportarCSV()">📥 CSV</button>
+        <button class="btn btn-white btn-sm" onclick="pgFiscalDashboard(document.getElementById('content'))">📊 Painel Fiscal</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="g4">
+      <div class="kpi kpi-blue"><div class="kpi-icon">🧾</div><div><div class="kpi-lbl">Total de Notas</div><div class="kpi-val" style="font-size:22px">${totalNF}</div></div></div>
+      <div class="kpi kpi-green"><div class="kpi-icon">💰</div><div><div class="kpi-lbl">Valor Total</div><div class="kpi-val">${R$(totalVal)}</div></div></div>
+      <div class="kpi kpi-amber"><div class="kpi-icon">📋</div><div><div class="kpi-lbl">ICMS + ISS</div><div class="kpi-val">${R$(totalICMS+totalISS)}</div></div></div>
+      <div class="kpi kpi-red"><div class="kpi-icon">🔗</div><div><div class="kpi-lbl">Aguardando Vínculo</div><div class="kpi-val" style="font-size:22px">${pendVincular}</div><div class="kpi-sub">notas não vinculadas</div></div></div>
+    </div>
+
+    <!-- FILTROS -->
+    <div style="background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 13px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div><div class="form-label">Empresa</div>
+        <select class="field" style="width:90px" id="nf-fil-emp" onchange="nfFiltrar()">
+          <option value="">Todas</option><option value="DL" ${currentEmpresa==='DL'?'selected':''}>DL</option><option value="MG" ${currentEmpresa==='MG'?'selected':''}>MG</option>
+        </select>
+      </div>
+      <div><div class="form-label">Tipo</div>
+        <select class="field" style="width:90px" id="nf-fil-tipo" onchange="nfFiltrar()">
+          <option value="">Todos</option><option value="NFe">NF-e</option><option value="NFSe">NFS-e</option><option value="CTe">CT-e</option>
+        </select>
+      </div>
+      <div><div class="form-label">Mês</div>
+        <select class="field" style="width:110px" id="nf-fil-mes" onchange="nfFiltrar()">
+          <option value="">Todos</option>
+          ${mesesOrdenados.map(m=>`<option value="${m}" ${m===curMes?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div><div class="form-label">Status</div>
+        <select class="field" style="width:110px" id="nf-fil-status" onchange="nfFiltrar()">
+          <option value="">Todos</option><option value="recebida">Recebida</option><option value="vinculada">Vinculada</option><option value="cancelada">Cancelada</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:140px"><div class="form-label">Buscar</div>
+        <input class="field" id="nf-fil-srch" placeholder="Emitente, número, CNPJ..." oninput="nfFiltrar()">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="nfLimparFiltros()">Limpar</button>
+    </div>
+
+    <!-- TABELA POR MÊS -->
+    <div id="nf-tabela">
+      ${mesesOrdenados.length === 0 ? `<div class="card"><div class="empty"><div class="ei">🧾</div><p>Nenhuma nota importada ainda</p><p style="font-size:12px;margin-top:8px">Clique em <strong>📂 Importar XML(s)</strong> para começar</p></div></div>` :
+        mesesOrdenados.map(mes => {
+          const mNotas = fNotas.filter(n=>(n.mes_competencia||'Sem data')===mes);
+          return nfRenderMes(mes, mNotas, porMes[mes]);
+        }).join('')
+      }
+    </div>
+  </div>
+
+  <!-- MODAL DETALHE NOTA -->
+  <div class="modal" id="nf-detail-modal">
+    <div class="modal-box wide">
+      <div class="modal-head"><h2 id="nf-detail-title">Nota Fiscal</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue btn-sm" onclick="nfGerarDANFE()">🖨 DANFE</button>
+          <button class="modal-close" onclick="document.getElementById('nf-detail-modal').classList.remove('open')">✕</button>
+        </div>
+      </div>
+      <div id="nf-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- MODAL VINCULAR CP -->
+  <div class="modal" id="nf-vincular-modal">
+    <div class="modal-box sm">
+      <div class="modal-head"><h2>🔗 Vincular ao Contas a Pagar</h2>
+        <button class="modal-close" onclick="document.getElementById('nf-vincular-modal').classList.remove('open')">✕</button>
+      </div>
+      <div id="nf-vincular-body"></div>
+    </div>
+  </div>`;
+
+  // Setar filtro de empresa
+  if(currentEmpresa !== 'GERAL') document.getElementById('nf-fil-emp').value = currentEmpresa;
+  if(mesesOrdenados.includes(curMes)) document.getElementById('nf-fil-mes').value = curMes;
+}
+
+function nfRenderMes(mes, notas, resumo) {
+  const label = mes !== 'Sem data' ? (() => {
+    const [y,m] = mes.split('-');
+    const mNomes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return `${mNomes[parseInt(m)]}/${y}`;
+  })() : 'Sem Data';
+
+  return `<div class="card" style="padding:0;overflow:hidden;margin-bottom:4px">
+    <div style="background:#f0f4f7;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)">
+      <div style="font-weight:800;font-size:14px">📅 ${label} — ${notas.length} nota(s)</div>
+      <div style="display:flex;gap:16px;font-size:13px">
+        <span>Total: <strong style="color:var(--green)">${R$(resumo.total)}</strong></span>
+        ${resumo.icms>0?`<span>ICMS: <strong style="color:var(--amber)">${R$(resumo.icms)}</strong></span>`:''}
+        ${resumo.iss>0?`<span>ISS: <strong style="color:var(--blue)">${R$(resumo.iss)}</strong></span>`:''}
+      </div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Emp</th><th>Tipo</th><th>Número</th><th>Data</th><th>Emitente</th><th>Natureza</th><th>Valor Total</th><th>ICMS</th><th>ISS</th><th>Status</th><th>Ações</th></tr></thead>
+      <tbody>
+        ${notas.map(n => `<tr>
+          <td>${empTag(n.empresa)}</td>
+          <td><span class="badge ${n.tipo==='NFe'?'b-blue':n.tipo==='NFSe'?'b-green':'b-amber'}">${n.tipo}</span></td>
+          <td style="font-family:'DM Mono',monospace">${n.numero||'—'}${n.serie?'/'+n.serie:''}</td>
+          <td style="white-space:nowrap">${fDate(n.data_emissao)}</td>
+          <td><div style="font-weight:600;font-size:13px">${esc(n.emitente_razao||'').slice(0,30)}</div><div style="font-size:11px;color:var(--muted)">${n.emitente_cnpj||''}</div></td>
+          <td style="font-size:12px;color:var(--muted)">${esc((n.natureza_operacao||'').slice(0,25))}</td>
+          <td class="td-mono" style="color:var(--green)">${R$(n.valor_total)}</td>
+          <td class="td-mono" style="color:var(--amber)">${n.valor_icms>0?R$(n.valor_icms):'-'}</td>
+          <td class="td-mono" style="color:var(--blue)">${n.valor_iss>0?R$(n.valor_iss):'-'}</td>
+          <td><span class="badge ${n.status==='vinculada'?'b-green':n.status==='cancelada'?'b-red':'b-amber'}">${n.status||'recebida'}</span></td>
+          <td>
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-white btn-xs" onclick="nfVerDetalhe(${n.id})">👁</button>
+              <button class="btn btn-blue btn-xs" onclick="nfGerarDANFEById(${n.id})">🖨</button>
+              ${n.status!=='vinculada'?`<button class="btn btn-green btn-xs" onclick="nfAbrirVincular(${n.id})">🔗</button>`:''}
+              <button class="btn btn-red btn-xs" onclick="nfExcluir(${n.id})">🗑</button>
+            </div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+// ── IMPORTAR XML ──
+async function nfImportarXML(files) {
+  const fileArr = Array.from(files);
+  if(!fileArr.length) return;
+
+  let ok=0, erros=0;
+  const empresa = currentEmpresa !== 'GERAL' ? currentEmpresa : 'DL';
+
+  for(const file of fileArr) {
+    try {
+      const xmlStr = await file.text();
+      const parsed = parseNFe(xmlStr);
+      if(!parsed.data_emissao && !parsed.numero) { erros++; continue; }
+
+      // Verificar duplicata por chave
+      if(parsed.chave_acesso) {
+        const {data:existe} = await supa.from('notas_fiscais').select('id').eq('chave_acesso', parsed.chave_acesso).limit(1);
+        if(existe && existe.length > 0) { toast(`NF ${parsed.numero||''} já importada (chave duplicada)`,'info'); continue; }
+      }
+
+      // Salvar nota
+      const notaId = await dbAdd('notas_fiscais', {
+        empresa,
+        tipo: parsed.tipo,
+        numero: parsed.numero,
+        serie: parsed.serie,
+        chave_acesso: parsed.chave_acesso || null,
+        data_emissao: parsed.data_emissao || null,
+        data_entrada: today(),
+        natureza_operacao: parsed.natureza_operacao,
+        emitente_cnpj: parsed.emitente_cnpj,
+        emitente_razao: parsed.emitente_razao,
+        emitente_uf: parsed.emitente_uf,
+        destinatario_cnpj: parsed.destinatario_cnpj,
+        destinatario_razao: parsed.destinatario_razao,
+        valor_produtos: parsed.valor_produtos||0,
+        valor_frete:    parsed.valor_frete||0,
+        valor_seguro:   parsed.valor_seguro||0,
+        valor_desconto: parsed.valor_desconto||0,
+        valor_outros:   parsed.valor_outros||0,
+        valor_total:    parsed.valor_total||0,
+        base_icms:  parsed.base_icms||0,
+        valor_icms: parsed.valor_icms||0,
+        valor_ipi:  parsed.valor_ipi||0,
+        valor_pis:  parsed.valor_pis||0,
+        valor_cofins: parsed.valor_cofins||0,
+        valor_iss:  parsed.valor_iss||0,
+        valor_ir:   parsed.valor_ir||0,
+        valor_csll: parsed.valor_csll||0,
+        mes_competencia: parsed.mes_competencia || today().slice(0,7),
+        xml_content: xmlStr.slice(0,65000), // limitar tamanho
+        status: 'recebida',
+        natureza_contabil: parsed.tipo === 'CTe' ? 'IMPORTACAO' : 'DESP_OPERACIONAL',
+      });
+
+      // Salvar itens
+      if(parsed.itens && parsed.itens.length > 0) {
+        for(const item of parsed.itens) {
+          await dbAdd('notas_fiscais_itens', { nota_id: notaId, ...item });
+        }
+      }
+      ok++;
+    } catch(e) {
+      console.error('Erro ao importar XML:', file.name, e);
+      erros++;
+    }
+  }
+
+  toast(`${ok} nota(s) importada(s)${erros>0?' | '+erros+' erro(s)':''}`, ok>0?'ok':'err');
+  await pgNotasFiscais(document.getElementById('content'));
+}
+
+// ── VER DETALHE ──
+let _nfAtual = null;
+async function nfVerDetalhe(id) {
+  const nota = await dbGet('notas_fiscais', id);
+  const itens = await supa.from('notas_fiscais_itens').select('*').eq('nota_id', id).order('numero_item');
+  _nfAtual = { nota, itens: itens.data || [] };
+
+  const R2 = v => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+  const fmtCNPJ = c => c ? c.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5') : '';
+
+  document.getElementById('nf-detail-title').textContent = `🧾 ${nota.tipo} Nº ${nota.numero||'—'} — ${esc(nota.emitente_razao||'')}`;
+  document.getElementById('nf-detail-body').innerHTML = `
+    <div class="g3" style="margin-bottom:12px">
+      <div class="card" style="padding:12px">
+        <div class="card-title">Identificação</div>
+        <div><strong>Número:</strong> ${nota.numero||'—'} / Série: ${nota.serie||'—'}</div>
+        <div><strong>Tipo:</strong> ${nota.tipo}</div>
+        <div><strong>Data Emissão:</strong> ${fDate(nota.data_emissao)}</div>
+        <div><strong>Empresa:</strong> ${empTag(nota.empresa)}</div>
+        <div><strong>Competência:</strong> ${nota.mes_competencia||'—'}</div>
+        <div><strong>Status:</strong> <span class="badge ${nota.status==='vinculada'?'b-green':'b-amber'}">${nota.status}</span></div>
+        ${nota.chave_acesso?`<div style="margin-top:8px;font-size:10px;font-family:monospace;color:var(--muted);word-break:break-all">${nota.chave_acesso}</div>`:''}
+      </div>
+      <div class="card" style="padding:12px">
+        <div class="card-title">Emitente</div>
+        <div><strong>${esc(nota.emitente_razao||'—')}</strong></div>
+        <div>CNPJ: ${fmtCNPJ(nota.emitente_cnpj)}</div>
+        <div>UF: ${nota.emitente_uf||'—'}</div>
+        <div style="margin-top:8px"><strong>Natureza:</strong></div>
+        <div style="color:var(--muted)">${esc(nota.natureza_operacao||'—')}</div>
+      </div>
+      <div class="card" style="padding:12px">
+        <div class="card-title">Valores</div>
+        <div>Produtos: <strong>${R2(nota.valor_produtos)}</strong></div>
+        ${+nota.valor_frete>0?`<div>Frete: ${R2(nota.valor_frete)}</div>`:''}
+        ${+nota.valor_desconto>0?`<div>Desconto: (${R2(nota.valor_desconto)})</div>`:''}
+        <div style="border-top:1px solid var(--line);margin:6px 0;padding-top:6px;font-weight:800;font-size:15px;color:var(--green)">TOTAL: R$ ${R2(nota.valor_total)}</div>
+        <div style="font-size:12px;color:var(--muted)">
+          ${+nota.valor_icms>0?`ICMS: R$ ${R2(nota.valor_icms)} | `:''}
+          ${+nota.valor_ipi>0?`IPI: R$ ${R2(nota.valor_ipi)} | `:''}
+          ${+nota.valor_pis>0?`PIS: R$ ${R2(nota.valor_pis)} | `:''}
+          ${+nota.valor_cofins>0?`COFINS: R$ ${R2(nota.valor_cofins)} | `:''}
+          ${+nota.valor_iss>0?`ISS: R$ ${R2(nota.valor_iss)} | `:''}
+          ${+nota.valor_ir>0?`IR: R$ ${R2(nota.valor_ir)} | `:''}
+          ${+nota.valor_csll>0?`CSLL: R$ ${R2(nota.valor_csll)}`:''}
+        </div>
+      </div>
+    </div>
+    ${_nfAtual.itens.length>0?`<div class="card" style="padding:12px">
+      <div class="card-title">Itens (${_nfAtual.itens.length})</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>#</th><th>Código</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th>Qtd</th><th>V.Unit</th><th>V.Total</th><th>ICMS</th></tr></thead>
+        <tbody>${_nfAtual.itens.map(it=>`<tr>
+          <td>${it.numero_item}</td><td>${esc(it.codigo_produto||'')}</td>
+          <td>${esc(it.descricao||'')}</td><td>${it.ncm||''}</td><td>${it.cfop||''}</td>
+          <td class="td-mono">${R2(it.quantidade)}</td><td class="td-mono">${R2(it.valor_unitario)}</td>
+          <td class="td-mono" style="color:var(--green)">${R2(it.valor_total)}</td>
+          <td class="td-mono">${it.valor_icms>0?R2(it.valor_icms):'-'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`:''}
+    <div class="modal-foot">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select class="field" style="width:140px" id="nf-det-empresa">
+          <option value="DL" ${nota.empresa==='DL'?'selected':''}>DL</option>
+          <option value="MG" ${nota.empresa==='MG'?'selected':''}>MG</option>
+        </select>
+        <select class="field" style="width:200px" id="nf-det-natureza">
+          <option value="DESP_OPERACIONAL" ${nota.natureza_contabil==='DESP_OPERACIONAL'?'selected':''}>Despesa Operacional</option>
+          <option value="CMV" ${nota.natureza_contabil==='CMV'?'selected':''}>CMV</option>
+          <option value="IMPORTACAO" ${nota.natureza_contabil==='IMPORTACAO'?'selected':''}>Custo de Importação</option>
+          <option value="DESP_FINANCEIRA" ${nota.natureza_contabil==='DESP_FINANCEIRA'?'selected':''}>Despesa Financeira</option>
+          <option value="PESSOAL" ${nota.natureza_contabil==='PESSOAL'?'selected':''}>Pessoal</option>
+        </select>
+        <button class="btn btn-blue btn-sm" onclick="nfSalvarClassificacao(${id})">💾 Salvar Classificação</button>
+        <button class="btn btn-green btn-sm" onclick="nfAbrirVincular(${id})">🔗 Vincular a CP</button>
+        <button class="btn btn-white btn-sm" onclick="nfGerarDANFE()">🖨 DANFE/PDF</button>
+      </div>
+    </div>`;
+
+  document.getElementById('nf-detail-modal').classList.add('open');
+}
+
+async function nfSalvarClassificacao(id) {
+  const emp = document.getElementById('nf-det-empresa').value;
+  const nat = document.getElementById('nf-det-natureza').value;
+  await supa.from('notas_fiscais').update({empresa:emp, natureza_contabil:nat}).eq('id',id);
+  toast('Classificação salva!','ok');
+  pgNotasFiscais(document.getElementById('content'));
+}
+
+function nfGerarDANFE() {
+  if(!_nfAtual) return;
+  gerarDANFE(_nfAtual.nota, _nfAtual.itens);
+}
+
+async function nfGerarDANFEById(id) {
+  const nota = await dbGet('notas_fiscais', id);
+  const {data: itens} = await supa.from('notas_fiscais_itens').select('*').eq('nota_id',id).order('numero_item');
+  gerarDANFE(nota, itens||[]);
+}
+
+// ── VINCULAR A CONTAS A PAGAR ──
+async function nfAbrirVincular(id) {
+  const nota = await dbGet('notas_fiscais', id);
+  const cp = await dbGet('contas_pagar');
+  const cpFilt = cp.filter(r=>r.status!=='paid'&&(r.empresa||'DL')===(nota.empresa||'DL'));
+
+  const body = document.getElementById('nf-vincular-body');
+  body.innerHTML = `<input type="hidden" id="nfv-id" value="${id}">
+    <div class="alert alert-blue" style="margin-bottom:12px">
+      NF ${nota.tipo} Nº ${nota.numero||'—'} — <strong>${esc(nota.emitente_razao||'')}</strong> — ${R$(nota.valor_total)}
+    </div>
+    <div style="font-weight:700;margin-bottom:8px">Vincular a conta a pagar existente:</div>
+    <div class="tbl-wrap" style="max-height:240px;overflow-y:auto">
+      <table><thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Valor</th><th></th></tr></thead>
+      <tbody>${cpFilt.length===0?'<tr><td colspan="4" class="empty"><p>Nenhuma conta a pagar pendente</p></td></tr>':
+        cpFilt.slice(0,20).map(r=>`<tr>
+          <td>${esc(r.fornecedor||'')}</td>
+          <td>${fDate(r.vencimento)}</td>
+          <td class="td-mono">${R$(r.valor)}</td>
+          <td><button class="btn btn-green btn-xs" onclick="nfConfirmarVinculo(${id},${r.id})">Vincular</button></td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
+      <div style="font-weight:700;margin-bottom:8px">Ou criar nova conta a pagar a partir desta NF:</div>
+      <button class="btn btn-blue btn-sm" onclick="nfCriarCP(${id})">＋ Criar Conta a Pagar</button>
+    </div>`;
+  document.getElementById('nf-vincular-modal').classList.add('open');
+}
+
+async function nfConfirmarVinculo(nfId, cpId) {
+  await supa.from('notas_fiscais').update({status:'vinculada', contas_pagar_id:cpId}).eq('id',nfId);
+  await supa.from('contas_pagar').update({observacao:`NF vinculada: ${nfId}`}).eq('id',cpId);
+  document.getElementById('nf-vincular-modal').classList.remove('open');
+  toast('Vinculado com sucesso!','ok');
+  pgNotasFiscais(document.getElementById('content'));
+}
+
+async function nfCriarCP(nfId) {
+  const nota = await dbGet('notas_fiscais', nfId);
+  try {
+    const cpId = await supa.from('contas_pagar').insert({
+      empresa: nota.empresa||'DL',
+      data_lanc: today(),
+      tipo_despesa: nota.tipo==='NFSe'?'NFS-e SERVIÇO':nota.tipo==='CTe'?'CT-e FRETE':'NF-e MERCADORIA',
+      fornecedor: nota.emitente_razao||'',
+      parcela: '1/1',
+      vencimento: nota.data_emissao||today(),
+      valor: nota.valor_total||0,
+      descricao_adicional: `NF ${nota.numero||''} — ${nota.natureza_operacao||''}`,
+      categoria: nota.tipo==='NFSe'?'SERVIÇOS':nota.tipo==='CTe'?'FRETE':'MERCADORIA',
+      natureza: nota.natureza_contabil||'DESP_OPERACIONAL',
+      status: 'open',
+      observacao: `Gerado automaticamente da ${nota.tipo} Nº ${nota.numero}`
+    }).select('id').single();
+
+    if(cpId.data) {
+      await supa.from('notas_fiscais').update({status:'vinculada', contas_pagar_id:cpId.data.id}).eq('id',nfId);
+    }
+    document.getElementById('nf-vincular-modal').classList.remove('open');
+    toast('Conta a pagar criada e vinculada!','ok');
+    pgNotasFiscais(document.getElementById('content'));
+  } catch(e) { toast('Erro: '+e.message,'err'); }
+}
+
+async function nfExcluir(id) {
+  if(!(await confirm2('Excluir esta nota fiscal?'))) return;
+  await dbDelete('notas_fiscais', id);
+  toast('Nota excluída!','ok');
+  pgNotasFiscais(document.getElementById('content'));
+}
+
+async function nfFiltrar() {
+  const emp    = document.getElementById('nf-fil-emp')?.value||'';
+  const tipo   = document.getElementById('nf-fil-tipo')?.value||'';
+  const mes    = document.getElementById('nf-fil-mes')?.value||'';
+  const status = document.getElementById('nf-fil-status')?.value||'';
+  const srch   = (document.getElementById('nf-fil-srch')?.value||'').toLowerCase();
+
+  const notas = await dbGet('notas_fiscais');
+  let filt = notas;
+  if(emp)    filt = filt.filter(n=>(n.empresa||'DL')===emp);
+  if(tipo)   filt = filt.filter(n=>n.tipo===tipo);
+  if(mes)    filt = filt.filter(n=>n.mes_competencia===mes);
+  if(status) filt = filt.filter(n=>n.status===status);
+  if(srch)   filt = filt.filter(n=>[n.emitente_razao,n.emitente_cnpj,n.numero,n.natureza_operacao].join(' ').toLowerCase().includes(srch));
+
+  // Reagrupar por mês
+  const porMes = {};
+  filt.forEach(n=>{const m=n.mes_competencia||'Sem data';if(!porMes[m])porMes[m]={count:0,total:0,icms:0,iss:0};porMes[m].count++;porMes[m].total+=+n.valor_total||0;porMes[m].icms+=+n.valor_icms||0;porMes[m].iss+=+n.valor_iss||0;});
+  const meses = Object.keys(porMes).sort().reverse();
+
+  const tabela = document.getElementById('nf-tabela');
+  if(tabela) tabela.innerHTML = meses.length===0?
+    '<div class="card"><div class="empty"><p>Nenhuma nota encontrada com esses filtros</p></div></div>':
+    meses.map(m=>nfRenderMes(m, filt.filter(n=>(n.mes_competencia||'Sem data')===m), porMes[m])).join('');
+}
+
+function nfLimparFiltros() {
+  ['nf-fil-emp','nf-fil-tipo','nf-fil-mes','nf-fil-status'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const s=document.getElementById('nf-fil-srch');if(s)s.value='';
+  nfFiltrar();
+}
+
+async function nfExportarCSV() {
+  const notas = empF(await dbGet('notas_fiscais'),'empresa');
+  if(!notas.length){toast('Sem dados','info');return;}
+  const h=['empresa','tipo','numero','serie','data_emissao','emitente_razao','emitente_cnpj','destinatario_razao','natureza_operacao','valor_total','base_icms','valor_icms','valor_pis','valor_cofins','valor_iss','mes_competencia','status'];
+  const rows=notas.map(n=>h.map(k=>`"${(n[k]??'').toString().replace(/"/g,'""')}"`).join(','));
+  const blob=new Blob(['\uFEFF'+[h.join(','),...rows].join('\n')],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`notas_fiscais_${today()}.csv`;a.click();
+}
+
+// ── PAINEL FISCAL ──
+async function pgFiscalDashboard(c) {
+  const notas = await dbGet('notas_fiscais');
+  const fNotas = empF(notas, 'empresa');
+  const now = new Date(); const yr = now.getFullYear();
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  const anual = meses.map((_,i)=>{
+    const m = `${yr}-${String(i+1).padStart(2,'0')}`;
+    const mn = fNotas.filter(n=>n.mes_competencia===m);
+    return {
+      mes: meses[i],
+      count: mn.length,
+      total: mn.reduce((s,n)=>s+(+n.valor_total||0),0),
+      icms:  mn.reduce((s,n)=>s+(+n.valor_icms||0),0),
+      pis:   mn.reduce((s,n)=>s+(+n.valor_pis||0),0),
+      cofins:mn.reduce((s,n)=>s+(+n.valor_cofins||0),0),
+      iss:   mn.reduce((s,n)=>s+(+n.valor_iss||0),0),
+    };
+  });
+
+  const totAno = anual.reduce((s,m)=>s+m.total,0);
+  const icmsAno= anual.reduce((s,m)=>s+m.icms,0);
+  const issAno = anual.reduce((s,m)=>s+m.iss,0);
+  const pisAno = anual.reduce((s,m)=>s+m.pis,0);
+  const cofAno = anual.reduce((s,m)=>s+m.cofins,0);
+
+  // Por emitente top 10
+  const emit = {};
+  fNotas.forEach(n=>{const k=n.emitente_razao||n.emitente_cnpj||'?';emit[k]=(emit[k]||0)+(+n.valor_total||0);});
+  const topEmit = Object.entries(emit).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+  // Por tipo
+  const porTipo = {NFe:0, NFSe:0, CTe:0};
+  fNotas.forEach(n=>{porTipo[n.tipo]=(porTipo[n.tipo]||0)+(+n.valor_total||0);});
+
+  c.innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="sec-head">
+      <div class="sec-title">📊 Painel Fiscal — ${yr}</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-white btn-sm" onclick="pgNotasFiscais(document.getElementById('content'))">← Voltar às Notas</button>
+        <button class="btn btn-white btn-sm" onclick="fiscalImprimir()">🖨 Imprimir</button>
+      </div>
+    </div>
+
+    <div class="g4">
+      <div class="kpi kpi-green"><div class="kpi-icon">💰</div><div><div class="kpi-lbl">Total NFs ${yr}</div><div class="kpi-val">${R$(totAno)}</div><div class="kpi-sub">${fNotas.filter(n=>(n.mes_competencia||'').startsWith(String(yr))).length} notas</div></div></div>
+      <div class="kpi kpi-amber"><div class="kpi-icon">📋</div><div><div class="kpi-lbl">ICMS Total</div><div class="kpi-val">${R$(icmsAno)}</div></div></div>
+      <div class="kpi kpi-blue"><div class="kpi-icon">🏛️</div><div><div class="kpi-lbl">ISS Total</div><div class="kpi-val">${R$(issAno)}</div></div></div>
+      <div class="kpi kpi-purple"><div class="kpi-icon">📊</div><div><div class="kpi-lbl">PIS + COFINS</div><div class="kpi-val">${R$(pisAno+cofAno)}</div></div></div>
+    </div>
+
+    <div class="g2">
+      <div class="card"><div class="card-title">📅 NFs por Mês — ${yr}</div>
+        <canvas id="fc-mensal" height="200"></canvas>
+      </div>
+      <div class="card"><div class="card-title">🍕 Por Tipo de Documento</div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding-top:8px">
+          ${Object.entries(porTipo).map(([tipo,val])=>`<div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span class="badge ${tipo==='NFe'?'b-blue':tipo==='NFSe'?'b-green':'b-amber'}">${tipo}</span>
+              <span class="td-mono">${R$(val)}</span>
+            </div>
+            <div class="prog"><div class="prog-fill" style="width:${totAno>0?Math.round(val/totAno*100):0}%;background:${tipo==='NFe'?'var(--blue)':tipo==='NFSe'?'var(--green)':'var(--amber)'}"></div></div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card"><div class="card-title">📋 Resumo Mensal de Impostos</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Mês</th><th>NFs</th><th>Valor Total</th><th>ICMS</th><th>ISS</th><th>PIS+COFINS</th></tr></thead>
+          <tbody>${anual.filter(m=>m.count>0).map(m=>`<tr>
+            <td style="font-weight:700">${m.mes}/${yr}</td>
+            <td class="td-mono">${m.count}</td>
+            <td class="td-mono" style="color:var(--green)">${R$(m.total)}</td>
+            <td class="td-mono" style="color:var(--amber)">${m.icms>0?R$(m.icms):'-'}</td>
+            <td class="td-mono" style="color:var(--blue)">${m.iss>0?R$(m.iss):'-'}</td>
+            <td class="td-mono">${(m.pis+m.cofins)>0?R$(m.pis+m.cofins):'-'}</td>
+          </tr>`).join('')}
+          <tr style="font-weight:800;border-top:2px solid var(--line)">
+            <td>TOTAL ${yr}</td><td class="td-mono">${fNotas.length}</td>
+            <td class="td-mono" style="color:var(--green)">${R$(totAno)}</td>
+            <td class="td-mono" style="color:var(--amber)">${R$(icmsAno)}</td>
+            <td class="td-mono" style="color:var(--blue)">${R$(issAno)}</td>
+            <td class="td-mono">${R$(pisAno+cofAno)}</td>
+          </tr></tbody>
+        </table></div>
+      </div>
+      <div class="card"><div class="card-title">🏆 Top 10 Emitentes</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Emitente</th><th>Total</th><th>%</th></tr></thead>
+          <tbody>${topEmit.map(([emit,val])=>`<tr>
+            <td style="font-size:12px">${esc(emit.slice(0,35))}</td>
+            <td class="td-mono" style="color:var(--green)">${R$(val)}</td>
+            <td class="td-mono">${totAno>0?(val/totAno*100).toFixed(1)+'%':'—'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Chart
+  if(typeof Chart==='undefined'){
+    const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+    s.onload=()=>_drawFiscalChart(anual);document.head.appendChild(s);
+  } else _drawFiscalChart(anual);
+}
+
+function _drawFiscalChart(anual){
+  const ctx=document.getElementById('fc-mensal');if(!ctx)return;
+  if(ctx._c)ctx._c.destroy();
+  ctx._c=new Chart(ctx,{type:'bar',data:{labels:anual.map(m=>m.mes),datasets:[
+    {label:'Valor NFs',data:anual.map(m=>m.total),backgroundColor:'rgba(14,110,181,.7)',borderRadius:4},
+    {label:'ICMS',data:anual.map(m=>m.icms),backgroundColor:'rgba(176,122,16,.7)',borderRadius:4},
+    {label:'ISS',data:anual.map(m=>m.iss),backgroundColor:'rgba(109,40,217,.7)',borderRadius:4},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5a7080',font:{size:11}}}},scales:{x:{ticks:{color:'#7a9ab5'},grid:{color:'#e8eef3'}},y:{ticks:{color:'#7a9ab5'},grid:{color:'#e8eef3'}}}}});
+}
+
+function fiscalImprimir(){
+  printReport(document.getElementById('content').innerHTML,'PAINEL FISCAL',`Empresa: ${currentEmpresa} — ${new Date().getFullYear()}`);
+}
 
 // ═══════════════════════════════════
 // INIT
