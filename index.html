@@ -1361,7 +1361,7 @@ function pcImprimir(){const pc=document.getElementById('content').innerHTML;prin
 let parcRecTemp=[];
 async function pgReceitas(c){
   const [cats,contas,clientes,formas,receitas]=await Promise.all([dbGet('categorias_receita'),dbGet('contas'),dbGet('clientes'),dbGet('formas_pagamento'),dbGet('receitas')]);
-  const fRec = empFilter(receitas,'empresa');
+  const fRec = empF(receitas,'empresa');
   const hoje = today();
 
   c.innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
@@ -1564,7 +1564,7 @@ async function excluirReceita(id){
 // ═══════════════════════════════════════════
 async function pgContasReceber(c){
   const parcelas=await dbGet('parcelas_receita');
-  const all = empFilter(parcelas,'empresa');
+  const all = empF(parcelas,'empresa');
   const pend=all.filter(p=>!p.dt_pagamento); const recb=all.filter(p=>!!p.dt_pagamento);
   const venc=pend.filter(p=>p.vencimento<today());
   const totP=pend.reduce((s,p)=>s+(+p.valor||0),0); const totR=recb.reduce((s,p)=>s+(+p.valor_pago||0),0); const totV=venc.reduce((s,p)=>s+(+p.valor||0),0);
@@ -1631,7 +1631,7 @@ async function crConfirmar(){const id=parseInt(document.getElementById('cr-id').
 let parcDespTemp=[];
 async function pgDespesas(c){
   const [cats,contas,forns,formas,despesas]=await Promise.all([dbGet('categorias_despesa'),dbGet('contas'),dbGet('fornecedores'),dbGet('formas_pagamento'),dbGet('despesas')]);
-  const fDesp = empFilter(despesas,'empresa');
+  const fDesp = empF(despesas,'empresa');
   c.innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
     <div class="sec-head"><div class="sec-title">❤️ Despesas Parceladas</div>
       <div style="display:flex;gap:8px">
@@ -2199,9 +2199,9 @@ async function pgExtrato(c){
   const anos=[...new Set([...pr,...pd,...cp].map(p=>(p.dt_pagamento||p.data_pagamento)?.slice(0,4)).filter(Boolean))].sort().reverse();
   const months=['Todos','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const filt=(yr,mo)=>{
-    let r=empFilter(pr,'empresa').filter(p=>!!p.dt_pagamento);
-    let d=empFilter(pd,'empresa').filter(p=>!!p.dt_pagamento);
-    let cpP=empFilter(cp,'empresa').filter(p=>p.status==='paid'&&!!p.data_pagamento);
+    let r=empF(pr,'empresa').filter(p=>!!p.dt_pagamento);
+    let d=empF(pd,'empresa').filter(p=>!!p.dt_pagamento);
+    let cpP=empF(cp,'empresa').filter(p=>p.status==='paid'&&!!p.data_pagamento);
     if(yr){r=r.filter(p=>p.dt_pagamento?.startsWith(yr));d=d.filter(p=>p.dt_pagamento?.startsWith(yr));cpP=cpP.filter(p=>p.data_pagamento?.startsWith(yr));}
     if(mo){r=r.filter(p=>p.dt_pagamento?.slice(5,7)===mo);d=d.filter(p=>p.dt_pagamento?.slice(5,7)===mo);cpP=cpP.filter(p=>p.data_pagamento?.slice(5,7)===mo);}
     return [r,d,cpP];
@@ -2248,7 +2248,7 @@ function buildExtrato(r,d,cpP){
 async function extFilt(){
   const yr=document.getElementById('ext-yr').value;const mo=document.getElementById('ext-mo').value;
   const [pr,pd,cp]=await Promise.all([dbGet('parcelas_receita'),dbGet('parcelas_despesa'),dbGet('contas_pagar')]);
-  let r=empFilter(pr,'empresa').filter(p=>!!p.dt_pagamento);let d=empFilter(pd,'empresa').filter(p=>!!p.dt_pagamento);let cpP=empFilter(cp,'empresa').filter(p=>p.status==='paid'&&!!p.data_pagamento);
+  let r=empF(pr,'empresa').filter(p=>!!p.dt_pagamento);let d=empF(pd,'empresa').filter(p=>!!p.dt_pagamento);let cpP=empF(cp,'empresa').filter(p=>p.status==='paid'&&!!p.data_pagamento);
   if(yr){r=r.filter(p=>p.dt_pagamento?.startsWith(yr));d=d.filter(p=>p.dt_pagamento?.startsWith(yr));cpP=cpP.filter(p=>p.data_pagamento?.startsWith(yr));}
   if(mo){r=r.filter(p=>p.dt_pagamento?.slice(5,7)===mo);d=d.filter(p=>p.dt_pagamento?.slice(5,7)===mo);cpP=cpP.filter(p=>p.data_pagamento?.slice(5,7)===mo);}
   document.getElementById('ext-body').innerHTML=buildExtrato(r,d,cpP);
@@ -2279,7 +2279,7 @@ async function salvarTransf(){const data=document.getElementById('tr-data').valu
 async function excluirTransf(id){if(!(await confirm2('Excluir?')))return;await dbDelete('transferencias',id);pgTransferencias(document.getElementById('content'));}
 
 async function pgPoupanca(c){
-  const movs=empFilter(await dbGet('poupanca'),'empresa');
+  const movs=empF(await dbGet('poupanca'),'empresa');
   const cred=movs.filter(m=>m.tipo==='CREDITO').reduce((s,m)=>s+(+m.valor||0),0);
   const deb=movs.filter(m=>m.tipo==='DEBITO').reduce((s,m)=>s+(+m.valor||0),0);
   c.innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
@@ -2348,14 +2348,14 @@ function relModal(title,cb){
   document.getElementById('modal-rel').classList.add('open');
 }
 
-async function relRec(){relModal('💚 Receitas por Período',async(di,df)=>{const d=empFilter(await dbGet('parcelas_receita'),'empresa').filter(p=>(p.vencimento||p.dt_pagamento)>=di&&(p.vencimento||p.dt_pagamento)<=df);const tot=d.reduce((s,p)=>s+(+p.valor_pago||+p.valor||0),0);printReport(`<table><thead><tr><th>Emp</th><th>Tipo</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Pgto</th><th>Status</th></tr></thead><tbody>${d.map(p=>`<tr><td>${p.empresa||'DL'}</td><td>${esc(p.tipo_nome||'-')}</td><td>${p.numero}/${p.total}</td><td>${fDate(p.vencimento)}</td><td class="green">${R$(p.valor)}</td><td>${fDate(p.dt_pagamento)}</td><td>${p.dt_pagamento?'RECEBIDO':p.vencimento<today()?'VENCIDO':'A RECEBER'}</td></tr>`).join('')}<tr class="total"><td colspan="4">TOTAL</td><td class="green" colspan="3">${R$(tot)} — ${d.length} títulos</td></tr></tbody></table>`,`Receitas — ${di} a ${df}`);})}
+async function relRec(){relModal('💚 Receitas por Período',async(di,df)=>{const d=empF(await dbGet('parcelas_receita'),'empresa').filter(p=>(p.vencimento||p.dt_pagamento)>=di&&(p.vencimento||p.dt_pagamento)<=df);const tot=d.reduce((s,p)=>s+(+p.valor_pago||+p.valor||0),0);printReport(`<table><thead><tr><th>Emp</th><th>Tipo</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Pgto</th><th>Status</th></tr></thead><tbody>${d.map(p=>`<tr><td>${p.empresa||'DL'}</td><td>${esc(p.tipo_nome||'-')}</td><td>${p.numero}/${p.total}</td><td>${fDate(p.vencimento)}</td><td class="green">${R$(p.valor)}</td><td>${fDate(p.dt_pagamento)}</td><td>${p.dt_pagamento?'RECEBIDO':p.vencimento<today()?'VENCIDO':'A RECEBER'}</td></tr>`).join('')}<tr class="total"><td colspan="4">TOTAL</td><td class="green" colspan="3">${R$(tot)} — ${d.length} títulos</td></tr></tbody></table>`,`Receitas — ${di} a ${df}`);})}
 
-async function relDesp(){relModal('❤️ Despesas por Período',async(di,df)=>{const d=empFilter(await dbGet('parcelas_despesa'),'empresa').filter(p=>(p.vencimento||p.dt_pagamento)>=di&&(p.vencimento||p.dt_pagamento)<=df);const tot=d.reduce((s,p)=>s+(+p.valor_pago||+p.valor||0),0);printReport(`<table><thead><tr><th>Emp</th><th>Categoria</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Pgto</th><th>Status</th></tr></thead><tbody>${d.map(p=>`<tr><td>${p.empresa||'DL'}</td><td>${esc(p.cat_nome||'-')}</td><td>${p.numero}/${p.total}</td><td>${fDate(p.vencimento)}</td><td class="red">${R$(p.valor)}</td><td>${fDate(p.dt_pagamento)}</td><td>${p.dt_pagamento?'PAGO':p.vencimento<today()?'VENCIDO':'A PAGAR'}</td></tr>`).join('')}<tr class="total"><td colspan="4">TOTAL</td><td class="red" colspan="3">${R$(tot)}</td></tr></tbody></table>`,`Despesas — ${di} a ${df}`);})}
+async function relDesp(){relModal('❤️ Despesas por Período',async(di,df)=>{const d=empF(await dbGet('parcelas_despesa'),'empresa').filter(p=>(p.vencimento||p.dt_pagamento)>=di&&(p.vencimento||p.dt_pagamento)<=df);const tot=d.reduce((s,p)=>s+(+p.valor_pago||+p.valor||0),0);printReport(`<table><thead><tr><th>Emp</th><th>Categoria</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Pgto</th><th>Status</th></tr></thead><tbody>${d.map(p=>`<tr><td>${p.empresa||'DL'}</td><td>${esc(p.cat_nome||'-')}</td><td>${p.numero}/${p.total}</td><td>${fDate(p.vencimento)}</td><td class="red">${R$(p.valor)}</td><td>${fDate(p.dt_pagamento)}</td><td>${p.dt_pagamento?'PAGO':p.vencimento<today()?'VENCIDO':'A PAGAR'}</td></tr>`).join('')}<tr class="total"><td colspan="4">TOTAL</td><td class="red" colspan="3">${R$(tot)}</td></tr></tbody></table>`,`Despesas — ${di} a ${df}`);})}
 
 async function relRecDesp(){relModal('📊 Receita × Despesa',async(di,df)=>{
-  const pr=empFilter(await dbGet('parcelas_receita'),'empresa').filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);
-  const pd=empFilter(await dbGet('parcelas_despesa'),'empresa').filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);
-  const cp=empFilter(await dbGet('contas_pagar'),'empresa').filter(p=>p.data_pagamento>=di&&p.data_pagamento<=df&&p.status==='paid');
+  const pr=empF(await dbGet('parcelas_receita'),'empresa').filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);
+  const pd=empF(await dbGet('parcelas_despesa'),'empresa').filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);
+  const cp=empF(await dbGet('contas_pagar'),'empresa').filter(p=>p.data_pagamento>=di&&p.data_pagamento<=df&&p.status==='paid');
   const tr=pr.reduce((s,p)=>s+(+p.valor_pago||0),0);
   const td=pd.reduce((s,p)=>s+(+p.valor_pago||0),0)+cp.reduce((s,r)=>s+(+(r.valor_pago??r.valor)||0),0);
   printReport(`<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -2363,16 +2363,16 @@ async function relRecDesp(){relModal('📊 Receita × Despesa',async(di,df)=>{
   <div><h3 style="color:red;border:none;font-size:15px">DESPESAS ${R$(td)}</h3><table><thead><tr><th>Emp</th><th>Tipo</th><th>Data</th><th>Valor</th></tr></thead><tbody>${[...pd.map(p=>`<tr><td>${p.empresa||'DL'}</td><td>${esc(p.cat_nome||'-')}</td><td>${fDate(p.dt_pagamento)}</td><td class="red">${R$(p.valor_pago)}</td></tr>`),...cp.map(p=>`<tr><td>${p.empresa||'DL'}</td><td>${esc(p.tipo_despesa||'-')}</td><td>${fDate(p.data_pagamento)}</td><td class="red">${R$(p.valor_pago??p.valor)}</td></tr>`)].join('')}</tbody></table></div>
   </div><p style="margin-top:12px;font-size:15px"><strong>SALDO: ${R$(tr-td)}</strong></p>`,`Receita × Despesa — ${di} a ${df}`);})}
 
-async function relRecCli(){relModal('👤 Receitas por Cliente',async(di,df)=>{const pr=empFilter(await dbGet('parcelas_receita'),'empresa').filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);const ag={};for(const p of pr){const k=p.cliente_nome||'Padrão';ag[k]=(ag[k]||0)+(+p.valor_pago||0);}const s=Object.entries(ag).sort((a,b)=>b[1]-a[1]);const tot=s.reduce((x,[,v])=>x+v,0);printReport(`<table><thead><tr><th>Cliente</th><th>Total</th><th>%</th></tr></thead><tbody>${s.map(([c,v])=>`<tr><td>${c}</td><td class="green">${R$(v)}</td><td>${(v/tot*100).toFixed(1)}%</td></tr>`).join('')}<tr class="total"><td>TOTAL</td><td class="green">${R$(tot)}</td><td>100%</td></tr></tbody></table>`,'Receitas por Cliente');})}
+async function relRecCli(){relModal('👤 Receitas por Cliente',async(di,df)=>{const pr=empF(await dbGet('parcelas_receita'),'empresa').filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);const ag={};for(const p of pr){const k=p.cliente_nome||'Padrão';ag[k]=(ag[k]||0)+(+p.valor_pago||0);}const s=Object.entries(ag).sort((a,b)=>b[1]-a[1]);const tot=s.reduce((x,[,v])=>x+v,0);printReport(`<table><thead><tr><th>Cliente</th><th>Total</th><th>%</th></tr></thead><tbody>${s.map(([c,v])=>`<tr><td>${c}</td><td class="green">${R$(v)}</td><td>${(v/tot*100).toFixed(1)}%</td></tr>`).join('')}<tr class="total"><td>TOTAL</td><td class="green">${R$(tot)}</td><td>100%</td></tr></tbody></table>`,'Receitas por Cliente');})}
 
 async function relDespCat(){relModal('🏷️ Despesas por Categoria',async(di,df)=>{
-  const pd=empFilter(await dbGet('parcelas_despesa'),'empresa').filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);
-  const cp=empFilter(await dbGet('contas_pagar'),'empresa').filter(p=>p.data_pagamento>=di&&p.data_pagamento<=df&&p.status==='paid');
+  const pd=empF(await dbGet('parcelas_despesa'),'empresa').filter(p=>p.dt_pagamento>=di&&p.dt_pagamento<=df);
+  const cp=empF(await dbGet('contas_pagar'),'empresa').filter(p=>p.data_pagamento>=di&&p.data_pagamento<=df&&p.status==='paid');
   const ag={};for(const p of pd){const k=p.cat_nome||'Outros';ag[k]=(ag[k]||0)+(+p.valor_pago||0);}for(const p of cp){const k=p.categoria||p.tipo_despesa||'Outros';ag[k]=(ag[k]||0)+(+(p.valor_pago??p.valor)||0);}
   const s=Object.entries(ag).sort((a,b)=>b[1]-a[1]);const tot=s.reduce((x,[,v])=>x+v,0);
   printReport(`<table><thead><tr><th>Categoria</th><th>Total</th><th>%</th></tr></thead><tbody>${s.map(([c,v])=>`<tr><td>${c}</td><td class="red">${R$(v)}</td><td>${(v/tot*100).toFixed(1)}%</td></tr>`).join('')}<tr class="total"><td>TOTAL</td><td class="red">${R$(tot)}</td><td>100%</td></tr></tbody></table>`,'Despesas por Categoria');})}
 
-async function relCP(){const rows=empFilter(await dbGet('contas_pagar'),'empresa').sort((a,b)=>a.vencimento>b.vencimento?1:-1);const tot=rows.reduce((s,r)=>s+(+r.valor||0),0);printReport(`<table><thead><tr><th>Emp</th><th>Tipo</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Pgto</th><th>Status</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.empresa||'DL'}</td><td>${esc(r.tipo_despesa||'')}</td><td>${esc(r.fornecedor||'')}</td><td>${r.parcela||''}</td><td>${fDate(r.vencimento)}</td><td>${R$(r.valor)}</td><td>${fDate(r.data_pagamento)}</td><td>${r.status==='paid'?'PAGO':cpSt(r)}</td></tr>`).join('')}<tr class="total"><td colspan="5">TOTAL</td><td>${R$(tot)}</td><td colspan="2">${rows.length} reg.</td></tr></tbody></table>`,'Contas a Pagar — Completo');}
+async function relCP(){const rows=empF(await dbGet('contas_pagar'),'empresa').sort((a,b)=>a.vencimento>b.vencimento?1:-1);const tot=rows.reduce((s,r)=>s+(+r.valor||0),0);printReport(`<table><thead><tr><th>Emp</th><th>Tipo</th><th>Fornecedor</th><th>Parc.</th><th>Vencimento</th><th>Valor</th><th>Pgto</th><th>Status</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.empresa||'DL'}</td><td>${esc(r.tipo_despesa||'')}</td><td>${esc(r.fornecedor||'')}</td><td>${r.parcela||''}</td><td>${fDate(r.vencimento)}</td><td>${R$(r.valor)}</td><td>${fDate(r.data_pagamento)}</td><td>${r.status==='paid'?'PAGO':cpSt(r)}</td></tr>`).join('')}<tr class="total"><td colspan="5">TOTAL</td><td>${R$(tot)}</td><td colspan="2">${rows.length} reg.</td></tr></tbody></table>`,'Contas a Pagar — Completo');}
 
 async function relComparativo(){
   const now=new Date();const yr=now.getFullYear();const mo=String(now.getMonth()+1).padStart(2,'0');
@@ -2410,7 +2410,7 @@ async function relCartoes(){
 async function pgGraficos(c){
   const now=new Date();const [pr,pd]=await Promise.all([dbGet('parcelas_receita'),dbGet('parcelas_despesa')]);
   const yr=now.getFullYear();const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const fPR=empFilter(pr,'empresa');const fPD=empFilter(pd,'empresa');
+  const fPR=empF(pr,'empresa');const fPD=empF(pd,'empresa');
   c.innerHTML=`<div style="display:flex;flex-direction:column;gap:16px"><div class="sec-title">📊 Gráficos</div>
     <div class="g2">
       <div class="card"><div class="card-title">🍕 Despesas por Categoria (Mês)</div><canvas id="g1" height="220"></canvas></div>
