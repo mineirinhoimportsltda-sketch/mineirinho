@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{
+:root{h
   --bg:#f2f4f7;--panel:#fff;--panel-soft:#f8fafc;--line:#d5dbe5;--line-2:#c7d0db;
   --text:#1f2937;--muted:#667085;--heading:#111827;--nav:#1a2230;--nav-2:#232c3b;
   --success:#17803d;--danger:#b42318;--warn:#b54708;--info:#175cd3;--purple:#6d28d9;
@@ -2875,7 +2875,7 @@ async function cadContas(c){
       +'</tr>';
   });}
   c.innerHTML='<div style="padding-top:12px">'
-    +'<div style="text-align:right;margin-bottom:8px"><button class="btn info small" onclick="contaAbrirForm()">＋ Nova Conta</button></div>'
+    +'<div style="text-align:right;margin-bottom:8px"><button class="btn info small" onclick="contaFormModal();contaAbrirForm()">＋ Nova Conta</button></div>'
     +'<div class="card"><div class="tbl-wrap"><table>'
     +'<thead><tr><th>Emp</th><th>Nome</th><th>Banco</th><th>Tipo</th><th>Saldo Ini.</th><th></th></tr></thead>'
     +'<tbody>'+rows+'</tbody>'
