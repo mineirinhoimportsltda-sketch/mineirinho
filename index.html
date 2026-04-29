@@ -3463,132 +3463,116 @@ async function pgContasBancarias(c){
   if(!c) return;
   c.innerHTML='<div style="padding:24px"><p>Carregando contas...</p></div>';
   try{
-    let contasQ=supa.from('caixas').select('*').order('nome');
-    const {data:contas,error:eC}=await contasQ;
+    const {data:contas,error:eC}=await supa.from('contas').select('*').eq('ativo',true).order('nome');
     if(eC) throw eC;
     if(!contas||contas.length===0){
-      c.innerHTML='<div style="padding:24px"><div class="page-title">🏦 Contas Bancárias</div><div class="notice blue" style="margin-top:12px">Nenhuma conta cadastrada.</div><button class="btn primary" style="margin-top:16px" onclick="contaAbrirForm()">+ Nova Conta</button></div>';
+      c.innerHTML='<div style="padding:24px"><div class="page-title">🏦 Contas Bancárias</div><div style="margin-top:12px;padding:12px;background:#e8f4fd;border-radius:8px">Nenhuma conta cadastrada.</div><button class="btn primary" style="margin-top:16px" onclick="contaAbrirForm()">+ Nova Conta</button></div>';
       return;
     }
     if(!_cbConta) _cbConta=contas[0].id;
     const conta=contas.find(x=>x.id===_cbConta)||contas[0];
     if(conta.id!==_cbConta) _cbConta=conta.id;
 
-    let lancQ=supa.from('lancamentos').select('*')
-      
-      .eq('caixa_id',_cbConta)
-      .order('data',{ascending:false})
-      .limit(200);
-    if(_cbMes){const[y,m]=_cbMes.split('-');const ini=_cbMes+'-01';const fim=_cbMes+'-'+new Date(y,m,0).getDate();lancQ=lancQ.gte('data',ini).lte('data',fim);}
-    const {data:lancs,error:eL}=await lancQ;
-    if(eL) throw eL;
+    // Get transactions from parcelas_receita and parcelas_despesa
+    let filtro = _cbConta ? (q) => q.eq('conta_id', _cbConta) : (q) => q;
+    let qRec = supa.from('parcelas_receita').select('*').eq('conta_id',_cbConta).not('dt_pagamento','is',null).order('dt_pagamento',{ascending:false}).limit(100);
+    let qDesp = supa.from('parcelas_despesa').select('*').eq('conta_id',_cbConta).not('dt_pagamento','is',null).order('dt_pagamento',{ascending:false}).limit(100);
+    if(_cbMes){
+      const[y,mo]=_cbMes.split('-');
+      const ini=_cbMes+'-01';
+      const fim=_cbMes+'-'+new Date(y,mo,0).getDate();
+      qRec=qRec.gte('dt_pagamento',ini).lte('dt_pagamento',fim);
+      qDesp=qDesp.gte('dt_pagamento',ini).lte('dt_pagamento',fim);
+    }
+    const [{data:rec,error:eR},{data:desp,error:eD}]=await Promise.all([qRec,qDesp]);
+    if(eR) throw eR;
+    if(eD) throw eD;
 
-    const saldo=conta.saldo_inicial||0;
+    const saldo=parseFloat(conta.saldo_inicial||0);
     let totalRec=0,totalDesp=0;
-    (lancs||[]).forEach(l=>{if(l.tipo==='receita'||l.tipo==='entrada')totalRec+=parseFloat(l.valor||0);else totalDesp+=parseFloat(l.valor||0);});
+    (rec||[]).forEach(l=>totalRec+=parseFloat(l.valor_pago||l.valor||0));
+    (desp||[]).forEach(l=>totalDesp+=parseFloat(l.valor_pago||l.valor||0));
     const saldoAtual=saldo+totalRec-totalDesp;
 
-    const listaCss=`width:260px;min-width:220px;border-right:1px solid var(--line);padding:16px;overflow-y:auto;`;
     const listaHTML=contas.map(ct=>{
       const ativo=ct.id===_cbConta;
-      return `<div onclick="cbSetConta('${ct.id}')" style="padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:${ativo?'var(--nav)':'transparent'};color:${ativo?'#fff':'var(--text)'}">${ct.nome}<br><small style="opacity:.7">${ct.tipo||'Conta'}</small></div>`;
+      return '<div onclick="cbSetConta('+ct.id+')" style="padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:'+(ativo?'var(--nav)':'transparent')+';color:'+(ativo?'#fff':'var(--text)')+'">'+ct.nome+'<br><small style="opacity:.7">'+(ct.tipo||'Conta')+'</small></div>';
     }).join('');
 
-    const filtroMesHTML=`<input type="month" value="${_cbMes}" onchange="cbSetMes(this.value)" style="padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px">`;
-    const srchHTML=`<input type="text" placeholder="Buscar..." value="${_cbSrch}" oninput="cbSetSrch(this.value)" style="padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;width:160px">`;
+    // Combine and sort all transactions
+    const allLancs = [
+      ...(rec||[]).map(l=>({...l, _tipo:'receita', _data:l.dt_pagamento, _desc:l.descricao||l.categoria||'Receita', _val:parseFloat(l.valor_pago||l.valor||0)})),
+      ...(desp||[]).map(l=>({...l, _tipo:'despesa', _data:l.dt_pagamento, _desc:l.descricao||l.categoria||'Despesa', _val:parseFloat(l.valor_pago||l.valor||0)}))
+    ].sort((a,b)=>b._data?.localeCompare(a._data||'')||0);
 
-    const linhas=(lancs||[]).filter(l=>!_cbSrch||l.descricao?.toLowerCase().includes(_cbSrch.toLowerCase())).map(l=>{
-      const rec=l.tipo==='receita'||l.tipo==='entrada';
-      const val=parseFloat(l.valor||0);
-      return `<tr>
-        <td>${l.data||''}</td>
-        <td>${l.descricao||''}</td>
-        <td style="color:${rec?'var(--success)':'var(--danger)'};${rec?'':''}text-align:right">${rec?'+':'-'}R$ ${val.toFixed(2).replace('.',',')}</td>
-        <td><span class="badge ${l.status==='confirmado'?'green':'yellow'}">${l.status||'pendente'}</span></td>
-      </tr>`;
+    const filtrado = !_cbSrch ? allLancs : allLancs.filter(l=>l._desc?.toLowerCase().includes(_cbSrch.toLowerCase()));
+
+    const linhas=filtrado.map(l=>{
+      const rec=l._tipo==='receita';
+      return '<tr><td>'+fDate(l._data)+'</td><td>'+l._desc+'</td><td style="text-align:right;color:'+(rec?'var(--success)':'var(--danger)')+';">'+(rec?'+':'-')+'R$ '+l._val.toFixed(2).replace('.',',')+'</td></tr>';
     }).join('');
 
-    c.innerHTML=`
-    <div style="display:flex;height:calc(100vh - var(--nav-h) - 32px)">
-      <div style="${listaCss}">
-        <div style="font-weight:600;margin-bottom:12px">Contas</div>
-        ${listaHTML}
-        <button class="btn primary" style="width:100%;margin-top:12px" onclick="contaAbrirForm()">+ Nova Conta</button>
-      </div>
-      <div style="flex:1;padding:20px;overflow-y:auto">
-        <div class="page-title">🏦 ${conta.nome}</div>
-        <div style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap">
-          <div class="kpi-card"><div class="kpi-label">Saldo Inicial</div><div class="kpi-value">R$ ${(saldo).toFixed(2).replace('.',',')}</div></div>
-          <div class="kpi-card"><div class="kpi-label">Entradas</div><div class="kpi-value" style="color:var(--success)">R$ ${totalRec.toFixed(2).replace('.',',')}</div></div>
-          <div class="kpi-card"><div class="kpi-label">Saídas</div><div class="kpi-value" style="color:var(--danger)">R$ ${totalDesp.toFixed(2).replace('.',',')}</div></div>
-          <div class="kpi-card"><div class="kpi-label">Saldo Atual</div><div class="kpi-value" style="color:${saldoAtual>=0?'var(--success)':'var(--danger)'}">R$ ${saldoAtual.toFixed(2).replace('.',',')}</div></div>
-        </div>
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
-          ${filtroMesHTML}${srchHTML}
-          <button class="btn primary small" onclick="contaLancarManual()">+ Lançar</button>
-        </div>
-        <table class="data-table" style="width:100%">
-          <thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Status</th></tr></thead>
-          <tbody>${linhas||'<tr><td colspan=4 style=\"text-align:center;padding:20px;opacity:.5\">Nenhum lançamento encontrado</td></tr>'}</tbody>
-        </table>
-      </div>
-    </div>`;
+    c.innerHTML='<div style="display:flex;height:calc(100vh - var(--nav-h) - 32px)">'
+      +'<div style="width:250px;min-width:200px;border-right:1px solid var(--line);padding:16px;overflow-y:auto">'
+      +'<div style="font-weight:600;margin-bottom:12px">Contas</div>'
+      +listaHTML
+      +'<button class="btn primary" style="width:100%;margin-top:12px" onclick="contaAbrirForm()">+ Nova Conta</button>'
+      +'</div>'
+      +'<div style="flex:1;padding:20px;overflow-y:auto">'
+      +'<div class="page-title">🏦 '+conta.nome+'</div>'
+      +'<div style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap">'
+      +'<div class="kpi-card"><div class="kpi-label">Saldo Inicial</div><div class="kpi-value">R$ '+saldo.toFixed(2).replace('.',',')+'</div></div>'
+      +'<div class="kpi-card"><div class="kpi-label">Entradas</div><div class="kpi-value" style="color:var(--success)">R$ '+totalRec.toFixed(2).replace('.',',')+'</div></div>'
+      +'<div class="kpi-card"><div class="kpi-label">Saídas</div><div class="kpi-value" style="color:var(--danger)">R$ '+totalDesp.toFixed(2).replace('.',',')+'</div></div>'
+      +'<div class="kpi-card"><div class="kpi-label">Saldo</div><div class="kpi-value" style="color:'+(saldoAtual>=0?'var(--success)':'var(--danger)')+'">R$ '+saldoAtual.toFixed(2).replace('.',',')+'</div></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
+      +'<input type="month" value="'+_cbMes+'" onchange="cbSetMes(this.value)" style="padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px">'
+      +'<input type="text" placeholder="Buscar..." value="'+_cbSrch+'" oninput="cbSetSrch(this.value)" style="padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;width:160px">'
+      +'</div>'
+      +'<table class="data-table" style="width:100%">'
+      +'<thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead>'
+      +'<tbody>'+(linhas||'<tr><td colspan=3 style="text-align:center;padding:20px;opacity:.5">Nenhum lançamento encontrado</td></tr>')+'</tbody>'
+      +'</table>'
+      +'</div></div>';
   }catch(err){
     console.error('pgContasBancarias error:',err);
-    c.innerHTML='<div style="padding:24px"><div class="notice danger">Erro ao carregar: '+(err.message||err)+'</div></div>';
+    c.innerHTML='<div style="padding:24px"><div style="padding:12px;background:#fde8e8;border-radius:8px;color:#c00">Erro ao carregar: '+(err.message||err)+'</div></div>';
   }
 }
 
-function contaAbrirForm(id){
-  const modal=document.getElementById('modal-conta')||criarModalConta();
+function contaAbrirForm(){
+  let modal=document.getElementById('modal-conta-form');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='modal-conta-form';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
+    const box=document.createElement('div');
+    box.style.cssText='background:#fff;padding:28px;border-radius:12px;width:420px;max-width:95vw';
+    box.innerHTML='<h3 style="margin:0 0 16px">Nova Conta</h3>'
+      +'<label style="display:block;margin-bottom:12px">Nome<input id="fc-nome" class="form-control" style="display:block;width:100%;margin-top:4px"></label>'
+      +'<label style="display:block;margin-bottom:12px">Banco<input id="fc-banco" class="form-control" placeholder="Ex: Nubank, Itaú..." style="display:block;width:100%;margin-top:4px"></label>'
+      +'<label style="display:block;margin-bottom:12px">Tipo<select id="fc-tipo" class="form-control" style="display:block;width:100%;margin-top:4px"><option>Conta Corrente</option><option>Conta Poupança</option><option>Caixa</option><option>Cartão</option></select></label>'
+      +'<label style="display:block;margin-bottom:16px">Saldo Inicial (R$)<input id="fc-saldo" type="number" step="0.01" value="0" class="form-control" style="display:block;width:100%;margin-top:4px"></label>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn secondary" id="fc-cancel">Cancelar</button><button class="btn primary" onclick="contaSalvarForm()">Salvar</button></div>';
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+    document.getElementById('fc-cancel').onclick=()=>modal.style.display='none';
+  }
   modal.style.display='flex';
-}
-function criarModalConta(){
-  const d=document.createElement('div');
-  d.id='modal-conta';
-  d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
-  const box=document.createElement('div');
-  box.style.cssText='background:#fff;padding:28px;border-radius:12px;width:400px;max-width:95vw';
-  box.innerHTML=[
-    '<h3>Nova Conta</h3>',
-    '<label>Nome<input id="fc-nome" class="form-control" style="display:block;width:100%;margin:6px 0 12px"></label>',
-    '<label>Tipo<select id="fc-tipo" class="form-control" style="display:block;width:100%;margin:6px 0 12px">',
-    '<option>Conta Corrente</option><option>Conta Poupanca</option><option>Caixa</option><option>Cartao</option>',
-    '</select></label>',
-    '<label>Saldo Inicial<input id="fc-saldo" type="number" step="0.01" value="0" class="form-control" style="display:block;width:100%;margin:6px 0 12px"></label>',
-    '<div style="display:flex;gap:8px;justify-content:flex-end">',
-    '<button class="btn secondary" onclick="document.getElementById(&quot;modal-conta&quot;).style.display=&quot;none&quot;">Cancelar</button>',
-    '<button class="btn primary" onclick="contaSalvarForm()">Salvar</button>',
-    '</div>'
-  ].join('');
-  d.appendChild(box);
-  document.body.appendChild(d);
-  return d;
 }
 async function contaSalvarForm(){
   const nome=document.getElementById('fc-nome').value.trim();
+  const banco=document.getElementById('fc-banco').value.trim();
   const tipo=document.getElementById('fc-tipo').value;
-  const saldo=parseFloat(document.getElementById('fc-saldo').value||0);
+  const saldo_inicial=parseFloat(document.getElementById('fc-saldo').value||0);
   if(!nome){alert('Informe o nome da conta');return;}
-  const {error}=await supa.from('caixas').insert({nome,tipo,saldo_inicial:saldo,empresa:currentEmpresa});
+  const{error}=await supa.from('contas').insert({nome,banco,tipo,saldo_inicial,ativo:true});
   if(error){alert('Erro: '+error.message);return;}
-  document.getElementById('modal-conta').style.display='none';
-  pgContasBancarias();
-}
-async function contaLancarManual(){
-  const desc=prompt('Descrição:');
-  if(!desc) return;
-  const tipo=prompt('Tipo (receita/despesa):','despesa');
-  const valor=parseFloat(prompt('Valor:','0'));
-  if(isNaN(valor)) return;
-  const data=new Date().toISOString().split('T')[0];
-  const {error}=await supa.from('lancamentos').insert({descricao:desc,tipo,valor,data,caixa_id:_cbConta,empresa:currentEmpresa,status:'pendente'});
-  if(error){alert('Erro: '+error.message);return;}
+  document.getElementById('modal-conta-form').style.display='none';
   pgContasBancarias();
 }
 
-// PAGE REGISTRATIONS
-// ═══════════════════════════════════════════
 PAGES['dashboard']=pgDashboard;
 PAGES['receitas']=pgReceitas;
 PAGES['despesas']=pgDespesas;
