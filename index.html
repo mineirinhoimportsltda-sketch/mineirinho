@@ -3463,7 +3463,7 @@ async function pgContasBancarias(c){
   if(!c) return;
   c.innerHTML='<div style="padding:24px"><p>Carregando contas...</p></div>';
   try{
-    let contasQ=supa.from('caixas').select('*').eq('empresa_id',empresaId).order('nome');
+    let contasQ=supa.from('caixas').select('*').order('nome');
     const {data:contas,error:eC}=await contasQ;
     if(eC) throw eC;
     if(!contas||contas.length===0){
@@ -3475,7 +3475,7 @@ async function pgContasBancarias(c){
     if(conta.id!==_cbConta) _cbConta=conta.id;
 
     let lancQ=supa.from('lancamentos').select('*')
-      .eq('empresa_id',empresaId)
+      
       .eq('caixa_id',_cbConta)
       .order('data',{ascending:false})
       .limit(200);
@@ -3570,7 +3570,7 @@ async function contaSalvarForm(){
   const tipo=document.getElementById('fc-tipo').value;
   const saldo=parseFloat(document.getElementById('fc-saldo').value||0);
   if(!nome){alert('Informe o nome da conta');return;}
-  const {error}=await supa.from('caixas').insert({nome,tipo,saldo_inicial:saldo,empresa_id:empresaId});
+  const {error}=await supa.from('caixas').insert({nome,tipo,saldo_inicial:saldo,empresa:currentEmpresa});
   if(error){alert('Erro: '+error.message);return;}
   document.getElementById('modal-conta').style.display='none';
   pgContasBancarias();
@@ -3582,7 +3582,7 @@ async function contaLancarManual(){
   const valor=parseFloat(prompt('Valor:','0'));
   if(isNaN(valor)) return;
   const data=new Date().toISOString().split('T')[0];
-  const {error}=await supa.from('lancamentos').insert({descricao:desc,tipo,valor,data,caixa_id:_cbConta,empresa_id:empresaId,status:'pendente'});
+  const {error}=await supa.from('lancamentos').insert({descricao:desc,tipo,valor,data,caixa_id:_cbConta,empresa:currentEmpresa,status:'pendente'});
   if(error){alert('Erro: '+error.message);return;}
   pgContasBancarias();
 }
