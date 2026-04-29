@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FinanceiroApp Pro — Mineirinho Importação</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>FinanceiroApp Pro — Mineirinho Importação v14</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -12,10 +12,10 @@
   --red:#c5151b;--blue:#0e6eb5;--green:#1f9e4a;--amber:#b07a10;--purple:#6d28d9;
   --soft-red:#fce8e9;--soft-blue:#e3f0fb;--soft-green:#e1f5e9;--soft-amber:#fef5dc;--soft-purple:#ede9fe;
   --shadow:0 4px 20px rgba(14,28,43,.09);--r:12px;
-  --nav-h:56px;
+  --nav-h:58px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px;height:100vh;overflow:hidden;display:flex;flex-direction:column}
 #nav{height:var(--nav-h);background:#0e1c2b;display:flex;align-items:center;padding:0 16px;gap:0;flex-shrink:0;z-index:200}
 .nav-logo{display:flex;align-items:center;gap:10px;margin-right:20px;flex-shrink:0}
 .nav-logo-icon{width:32px;height:32px;background:linear-gradient(135deg,#1f9e4a,#0e6eb5);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
@@ -28,18 +28,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .nav-item .arr{font-size:9px;margin-left:2px;opacity:.6}
 .nav-dropdown{position:absolute;top:100%;left:0;background:#0e1c2b;border:1px solid rgba(255,255,255,.12);border-radius:0 0 10px 10px;min-width:220px;padding:5px 0;display:none;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 .nav-item:hover .nav-dropdown,.nav-item:focus-within .nav-dropdown{display:block}
-.nav-dd-item{display:block;padding:9px 16px;color:#8aacbf;font-size:13px;font-weight:500;cursor:pointer;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:'DM Sans',sans-serif}
+.nav-dd-item{display:block;padding:9px 16px;color:#8aacbf;font-size:13px;font-weight:500;cursor:pointer;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:'Inter',sans-serif}
 .nav-dd-item:hover{background:rgba(255,255,255,.08);color:#fff}
 .nav-dd-item.active{color:#4cde85}
 .nav-right{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}
 .empresa-switcher{display:flex;background:rgba(255,255,255,.1);border-radius:20px;padding:3px;gap:2px}
-.emp-btn{padding:4px 12px;border-radius:16px;border:none;background:transparent;color:#8aacbf;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif}
+.emp-btn{padding:4px 12px;border-radius:16px;border:none;background:transparent;color:#8aacbf;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif}
 .emp-btn.active{background:#1f9e4a;color:#fff}
 .nav-user{color:#7a9ab5;font-size:12px;font-weight:600;white-space:nowrap}
-.nav-logout{background:none;border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#7a9ab5;font-size:12px;padding:5px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.nav-logout{background:none;border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#7a9ab5;font-size:12px;padding:5px 10px;cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap}
 .nav-logout:hover{background:rgba(255,255,255,.1);color:#fff}
 #content{flex:1;overflow-y:auto;padding:18px}
-.btn{border:none;border-radius:10px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:'DM Sans',sans-serif;transition:all .15s}
+.btn{border:none;border-radius:10px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:'Inter',sans-serif;transition:all .15s}
 .btn-green{background:#1f9e4a;color:#fff}.btn-green:hover{background:#178c3e}
 .btn-blue{background:#0e6eb5;color:#fff}.btn-blue:hover{background:#0b5e9c}
 .btn-red{background:#c5151b;color:#fff}.btn-red:hover{background:#a81116}
@@ -59,7 +59,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .kpi-amber .kpi-icon{background:var(--soft-amber);color:var(--amber)}
 .kpi-purple .kpi-icon{background:var(--soft-purple);color:var(--purple)}
 .kpi-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.kpi-val{font-size:19px;font-weight:800;font-family:'DM Mono',monospace;margin-top:2px}
+.kpi-val{font-size:19px;font-weight:800;font-family:'JetBrains Mono',monospace;margin-top:2px}
 .kpi-green .kpi-val{color:var(--green)}.kpi-red .kpi-val{color:var(--red)}
 .kpi-blue .kpi-val{color:var(--blue)}.kpi-amber .kpi-val{color:var(--amber)}.kpi-purple .kpi-val{color:var(--purple)}
 .kpi-sub{font-size:11px;color:var(--muted);margin-top:2px}
@@ -74,7 +74,7 @@ th{padding:8px 10px;text-align:left;font-size:11px;font-weight:700;text-transfor
 td{padding:8px 10px;border-bottom:1px solid #e8eef3;vertical-align:middle}
 tr:hover td{background:#f6f9fb}
 tr:last-child td{border-bottom:none}
-.td-mono{font-family:'DM Mono',monospace;font-size:12px}
+.td-mono{font-family:'JetBrains Mono',monospace;font-size:12px}
 .badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .b-green{background:var(--soft-green);color:var(--green)}.b-red{background:var(--soft-red);color:var(--red)}
 .b-amber{background:var(--soft-amber);color:var(--amber)}.b-blue{background:var(--soft-blue);color:var(--blue)}
@@ -85,7 +85,7 @@ tr:last-child td{border-bottom:none}
 .st-blue{background:var(--soft-blue);color:#0b5e9c}
 .form-group{margin-bottom:12px}
 .form-label{display:block;font-size:11px;font-weight:700;color:#3a5060;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
-.field{width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:7px 11px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;height:36px;transition:border .15s}
+.field{width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:7px 11px;font-size:13px;font-family:'Inter',sans-serif;outline:none;height:36px;transition:border .15s}
 .field:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(14,110,181,.12)}
 textarea.field{height:auto;min-height:64px;resize:vertical}
 .frow{display:grid;gap:10px}
@@ -112,20 +112,20 @@ textarea.field{height:auto;min-height:64px;resize:vertical}
 .sum-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
 .sumcard{background:#fffbf0;border:1px solid #e8ddc2;border-radius:10px;padding:9px 10px;text-align:center}
 .sumcard .st{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted)}
-.sumcard .sv{font-size:17px;font-weight:800;font-family:'DM Mono',monospace;margin-top:4px}
+.sumcard .sv{font-size:17px;font-weight:800;font-family:'JetBrains Mono',monospace;margin-top:4px}
 .sumcard .sq{font-size:12px;font-weight:700;margin-top:1px}
 .baixa-modal .modal-box{background:#f0f0f0;border-radius:8px;max-width:420px;padding:0;overflow:hidden}
 .baixa-header{background:#2d5f8a;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
 .baixa-header h3{font-size:14px;font-weight:700;margin:0}
 .baixa-body{padding:14px}
 .baixa-field-lbl{font-size:12px;font-weight:700;color:#333;margin-bottom:3px;margin-top:8px}
-.baixa-field{width:100%;background:#fff;border:1px solid #aaa;border-radius:4px;padding:5px 9px;font-size:13px;font-family:'DM Sans',sans-serif;color:#333;height:32px}
+.baixa-field{width:100%;background:#fff;border:1px solid #aaa;border-radius:4px;padding:5px 9px;font-size:13px;font-family:'Inter',sans-serif;color:#333;height:32px}
 .baixa-field:focus{border-color:#2d5f8a;outline:none}
 .baixa-row{display:grid;grid-template-columns:80px 110px 1fr;gap:8px;margin-top:6px;background:#e8e8e8;border:1px solid #ccc;padding:6px 8px;border-radius:4px;font-size:12px;font-weight:700}
 .baixa-row span{color:#555}
-.baixa-row .val{color:#c5151b;font-family:'DM Mono',monospace}
+.baixa-row .val{color:#c5151b;font-family:'JetBrains Mono',monospace}
 .baixa-footer{background:#e0e0e0;padding:10px 14px;display:flex;gap:8px;justify-content:center;border-top:1px solid #ccc}
-.btn-baixa{border:none;border-radius:4px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;font-family:'DM Sans',sans-serif}
+.btn-baixa{border:none;border-radius:4px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;font-family:'Inter',sans-serif}
 .btn-baixa .ico{font-size:18px}
 .btn-baixa.save{background:#4a8f5e;color:#fff}
 .btn-baixa.del{background:#c5151b;color:#fff}
@@ -177,58 +177,58 @@ textarea.field{height:auto;min-height:64px;resize:vertical}
 
 <nav id="nav" style="display:none">
   <div class="nav-logo">
-    <div class="nav-logo-icon">💰</div>
-    <div class="nav-logo-text">FinanceiroApp Pro<small>Mineirinho Importação</small></div>
+    <div class="nav-logo-icon">ð°</div>
+    <div class="nav-logo-text">FinanceiroApp Pro<small>Mineirinho ImportaÃ§Ã£o</small></div>
   </div>
   <div class="nav-menu">
-    <div class="nav-item active" onclick="go('dashboard')" data-page="dashboard">📊 Dashboard</div>
+    <div class="nav-item active" onclick="go('dashboard')" data-page="dashboard">ð Dashboard</div>
     <div class="nav-item" tabindex="0">
-      📝 Lançamentos <span class="arr">▾</span>
+      ð LanÃ§amentos <span class="arr">â¾</span>
       <div class="nav-dropdown">
-        <button class="nav-dd-item" onclick="go('receitas')" data-page="receitas">💚 Receitas</button>
-        <button class="nav-dd-item" onclick="go('despesas')" data-page="despesas">❤️ Despesas Parceladas</button>
-        <button class="nav-dd-item" onclick="go('poupanca')" data-page="poupanca">🏦 Poupança/Reserva</button>
-        <button class="nav-dd-item" onclick="go('transferencias')" data-page="transferencias">🔄 Transferências</button>
+        <button class="nav-dd-item" onclick="go('receitas')" data-page="receitas">ð Receitas</button>
+        <button class="nav-dd-item" onclick="go('despesas')" data-page="despesas">â¤ï¸ Despesas Parceladas</button>
+        <button class="nav-dd-item" onclick="go('poupanca')" data-page="poupanca">ð¦ PoupanÃ§a/Reserva</button>
+        <button class="nav-dd-item" onclick="go('transferencias')" data-page="transferencias">ð TransferÃªncias</button>
       </div>
     </div>
     <div class="nav-item" tabindex="0">
-      💳 Contas <span class="arr">▾</span>
+      ð³ Contas <span class="arr">â¾</span>
       <div class="nav-dropdown">
-        <button class="nav-dd-item" onclick="go('contas_receber')" data-page="contas_receber">📥 A Receber</button>
-        <button class="nav-dd-item" onclick="go('contas_pagar')" data-page="contas_pagar">📤 A Pagar</button>
-        <button class="nav-dd-item" onclick="go('cartao')" data-page="cartao">💳 Cartões de Crédito</button>
+        <button class="nav-dd-item" onclick="go('contas_receber')" data-page="contas_receber">ð¥ A Receber</button>
+        <button class="nav-dd-item" onclick="go('contas_pagar')" data-page="contas_pagar">ð¤ A Pagar</button>
+        <button class="nav-dd-item" onclick="go('cartao')" data-page="cartao">ð³ CartÃµes de CrÃ©dito</button>
       </div>
     </div>
     <div class="nav-item" tabindex="0">
-      📊 Contábil <span class="arr">▾</span>
+      ð ContÃ¡bil <span class="arr">â¾</span>
       <div class="nav-dropdown">
-        <button class="nav-dd-item" onclick="go('dre')" data-page="dre">📈 DRE</button>
-        <button class="nav-dd-item" onclick="go('balanco')" data-page="balanco">⚖️ Balanço Patrimonial</button>
-        <button class="nav-dd-item" onclick="go('plano_contas')" data-page="plano_contas">📋 Plano de Contas</button>
+        <button class="nav-dd-item" onclick="go('dre')" data-page="dre">ð DRE</button>
+        <button class="nav-dd-item" onclick="go('balanco')" data-page="balanco">âï¸ BalanÃ§o Patrimonial</button>
+        <button class="nav-dd-item" onclick="go('plano_contas')" data-page="plano_contas">ð Plano de Contas</button>
       </div>
     </div>
     <div class="nav-item" tabindex="0">
-      🧾 Fiscal <span class="arr">▾</span>
+      ð§¾ Fiscal <span class="arr">â¾</span>
       <div class="nav-dropdown">
-        <button class="nav-dd-item" onclick="go('notas_fiscais')" data-page="notas_fiscais">📥 Notas Recebidas</button>
-        <button class="nav-dd-item" onclick="go('fiscal_dashboard')" data-page="fiscal_dashboard">📊 Painel Fiscal</button>
+        <button class="nav-dd-item" onclick="go('notas_fiscais')" data-page="notas_fiscais">ð¥ Notas Recebidas</button>
+        <button class="nav-dd-item" onclick="go('fiscal_dashboard')" data-page="fiscal_dashboard">ð Painel Fiscal</button>
       </div>
     </div>
     <div class="nav-item" tabindex="0">
-      📈 Análise <span class="arr">▾</span>
+      ð AnÃ¡lise <span class="arr">â¾</span>
       <div class="nav-dropdown">
-        <button class="nav-dd-item" onclick="go('extrato')" data-page="extrato">📋 Extrato Comparativo</button>
-        <button class="nav-dd-item" onclick="go('relatorios')" data-page="relatorios">📑 Relatórios</button>
-        <button class="nav-dd-item" onclick="go('graficos')" data-page="graficos">📊 Gráficos</button>
-        <button class="nav-dd-item" onclick="go('conciliacao')" data-page="conciliacao">🔍 Conciliação Bancária</button>
+        <button class="nav-dd-item" onclick="go('extrato')" data-page="extrato">ð Extrato Comparativo</button>
+        <button class="nav-dd-item" onclick="go('relatorios')" data-page="relatorios">ð RelatÃ³rios</button>
+        <button class="nav-dd-item" onclick="go('graficos')" data-page="graficos">ð GrÃ¡ficos</button>
+        <button class="nav-dd-item" onclick="go('conciliacao')" data-page="conciliacao">ð ConciliaÃ§Ã£o BancÃ¡ria</button>
       </div>
     </div>
     <div class="nav-item" tabindex="0">
-      ⚙️ Config <span class="arr">▾</span>
+      âï¸ Config <span class="arr">â¾</span>
       <div class="nav-dropdown">
-        <button class="nav-dd-item" onclick="go('cadastros')" data-page="cadastros">⚙️ Cadastros</button>
-        <button class="nav-dd-item" onclick="go('usuarios')" data-page="usuarios">👥 Usuários</button>
-        <button class="nav-dd-item" onclick="go('backup')" data-page="backup">💾 Backup / SQL</button>
+        <button class="nav-dd-item" onclick="go('cadastros')" data-page="cadastros">âï¸ Cadastros</button>
+        <button class="nav-dd-item" onclick="go('usuarios')" data-page="usuarios">ð¥ UsuÃ¡rios</button>
+        <button class="nav-dd-item" onclick="go('backup')" data-page="backup">ð¾ Backup / SQL</button>
       </div>
     </div>
   </div>
@@ -239,7 +239,7 @@ textarea.field{height:auto;min-height:64px;resize:vertical}
       <button class="emp-btn" id="emp-btn-MG" onclick="setEmpresa('MG')">MG</button>
     </div>
     <span class="nav-user" id="nav-user">...</span>
-    <span id="refresh-timer" style="color:#4a6478;font-size:11px;font-weight:600" title="Atualização automática a cada 60s">🔄 <span id="refresh-countdown">60</span>s</span>
+    <span id="refresh-timer" style="color:#4a6478;font-size:11px;font-weight:600" title="AtualizaÃ§Ã£o automÃ¡tica a cada 60s">ð <span id="refresh-countdown">60</span>s</span>
     <button class="nav-logout" onclick="logout()">Sair</button>
   </div>
 </nav>
@@ -247,23 +247,23 @@ textarea.field{height:auto;min-height:64px;resize:vertical}
 <div id="content"></div>
 
 <script>
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 // SUPABASE
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 const SUPA_URL='https://iqefyujbohknfkiitqcj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxZWZ5dWpib2hrbmZraWl0cWNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyODEyNTAsImV4cCI6MjA5MTg1NzI1MH0.-TLc9BBqT4Pap-_HiToxwZTUk7do3L-NR-n0kAsmt7k';
 const supa=supabase.createClient(SUPA_URL,SUPA_KEY);
 
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 // DB LAYER
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 async function dbGet(table,id){
   try{
     if(id!==undefined){const{data,error}=await supa.from(table).select('*').eq('id',id).single();if(error){console.error(table,error);return null;}return data;}
     const{data,error}=await supa.from(table).select('*').order('id');
     if(error){console.error(table,error);toast('Erro ao carregar '+table+': '+error.message,'err');return[];}
     return data||[];
-  }catch(e){console.error(table,e);toast('Falha de conexão: '+e.message,'err');return id!==undefined?null:[];}
+  }catch(e){console.error(table,e);toast('Falha de conexÃ£o: '+e.message,'err');return id!==undefined?null:[];}
 }
 async function dbAdd(table,obj){
   const clean={...obj};delete clean.id;
@@ -281,9 +281,9 @@ async function dbDelete(table,id){
 }
 async function dbClear(table){await supa.from(table).delete().neq('id',0);}
 
-// ═══════════════════════════════════
-// HELPERS RESILIENTES (CORREÇÃO SCHEMA)
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
+// HELPERS RESILIENTES (CORREÃÃO SCHEMA)
+// âââââââââââââââââââââââââââââââââââ
 async function resilientInsert(table,objCompleto,objMinimo){
   const{data,error}=await supa.from(table).insert(objCompleto).select('id').single();
   if(!error)return data.id;
@@ -297,8 +297,8 @@ async function resilientInsert(table,objCompleto,objMinimo){
     Object.entries(objCompleto).forEach(([k,v])=>{if(cols.has(k))objFinal[k]=v;});
   }
   const{data:d2,error:e2}=await supa.from(table).insert(objFinal).select('id').single();
-  if(e2)throw new Error(e2.message+'\n\n👉 Execute o SQL de migração em Config > Backup / SQL');
-  toast('⚠️ Salvo com schema parcial. Execute a migração SQL.','info');
+  if(e2)throw new Error(e2.message+'\n\nð Execute o SQL de migraÃ§Ã£o em Config > Backup / SQL');
+  toast('â ï¸ Salvo com schema parcial. Execute a migraÃ§Ã£o SQL.','info');
   return d2.id;
 }
 async function resilientInsertNoReturn(table,objCompleto,objMinimo){
@@ -313,12 +313,12 @@ async function resilientInsertNoReturn(table,objCompleto,objMinimo){
     Object.entries(objCompleto).forEach(([k,v])=>{if(cols.has(k))objFinal[k]=v;});
   }
   const{error:e2}=await supa.from(table).insert(objFinal);
-  if(e2)console.warn(table+' mínimo:',e2.message);
+  if(e2)console.warn(table+' mÃ­nimo:',e2.message);
 }
 
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 // GLOBALS / HELPERS
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 let currentUser=null,currentEmpresa='GERAL',currentPage='';
 const R$=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const fDate=iso=>iso?new Date(iso+'T00:00:00').toLocaleDateString('pt-BR'):'';
@@ -331,7 +331,7 @@ const normDate=d=>{if(!d)return'';if(d.includes('/'))return d.split('/').reverse
 
 function toast(msg,type='info'){
   const w=document.getElementById('toast-wrap');
-  const icons={ok:'✅',err:'❌',info:'ℹ️'};
+  const icons={ok:'â',err:'â',info:'â¹ï¸'};
   const el=document.createElement('div');el.className=`toast ${type}`;
   el.innerHTML=`<span>${icons[type]}</span><span>${esc(msg)}</span>`;
   w.appendChild(el);
@@ -341,7 +341,7 @@ function confirm2(msg){
   return new Promise(res=>{
     const o=document.createElement('div');o.className='modal open';
     o.innerHTML=`<div class="modal-box" style="max-width:360px">
-      <div class="modal-head"><h2>⚠️ Confirmar</h2></div>
+      <div class="modal-head"><h2>â ï¸ Confirmar</h2></div>
       <p style="color:var(--muted);margin-bottom:16px">${msg}</p>
       <div class="modal-foot"><button class="btn btn-white btn-sm" id="cno">Cancelar</button><button class="btn btn-red btn-sm" id="cyes">Confirmar</button></div>
     </div>`;
@@ -363,9 +363,9 @@ function printReport(html,title,subtitle=''){
   .indent{padding-left:20px}
   @media print{button{display:none}}</style></head><body>
   <div style="display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start;margin-bottom:12px">
-    <div style="border:1px solid #ddd;height:70px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#b84a00;text-align:center">MINEIRINHO<br>IMPORTAÇÃO</div>
-    <div><h2>MINEIRINHO IMPORTAÇÃO LTDA</h2>
-    <p style="margin:3px 0;font-size:13px">CNPJ: 45.565.286/0001-90 — Tel: (37) 98855-8238</p>
+    <div style="border:1px solid #ddd;height:70px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#b84a00;text-align:center">MINEIRINHO<br>IMPORTAÃÃO</div>
+    <div><h2>MINEIRINHO IMPORTAÃÃO LTDA</h2>
+    <p style="margin:3px 0;font-size:13px">CNPJ: 45.565.286/0001-90 â Tel: (37) 98855-8238</p>
     ${subtitle?`<p style="margin:2px 0;font-size:12px;color:#555">${subtitle}</p>`:''}
     </div>
   </div>
@@ -380,9 +380,9 @@ function setEmpresa(emp){
   const p=PAGES[currentPage];if(p)p.fn(document.getElementById('content'));
 }
 
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 // AUTH
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 function showLogin(){
   document.getElementById('nav').style.display='none';
   let el=document.getElementById('login-screen');
@@ -391,15 +391,15 @@ function showLogin(){
     el.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0e1c2b">
       <div style="width:340px">
         <div style="text-align:center;margin-bottom:24px">
-          <div style="width:52px;height:52px;background:linear-gradient(135deg,#1f9e4a,#0e6eb5);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px">💰</div>
+          <div style="width:52px;height:52px;background:linear-gradient(135deg,#1f9e4a,#0e6eb5);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px">ð°</div>
           <h1 style="font-size:20px;font-weight:800;color:#fff">FinanceiroApp Pro</h1>
-          <p style="color:#4a6478;font-size:13px;margin-top:4px">Mineirinho Importação Ltda</p>
+          <p style="color:#4a6478;font-size:13px;margin-top:4px">Mineirinho ImportaÃ§Ã£o Ltda</p>
         </div>
         <div style="background:#161f2e;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px">
-          <div class="form-group"><label class="form-label" style="color:#7a9ab5">Usuário</label><input class="field" id="l-user" value="admin" style="background:#0e1c2b;border-color:rgba(255,255,255,.15);color:#fff"></div>
+          <div class="form-group"><label class="form-label" style="color:#7a9ab5">UsuÃ¡rio</label><input class="field" id="l-user" value="admin" style="background:#0e1c2b;border-color:rgba(255,255,255,.15);color:#fff"></div>
           <div class="form-group"><label class="form-label" style="color:#7a9ab5">Senha</label><input type="password" class="field" id="l-pass" value="1234" style="background:#0e1c2b;border-color:rgba(255,255,255,.15);color:#fff"></div>
           <div id="l-err" style="display:none;background:rgba(197,21,27,.2);border:1px solid rgba(197,21,27,.4);border-radius:6px;padding:8px 12px;color:#f87171;font-size:13px;margin-bottom:10px"></div>
-          <button class="btn btn-green" style="width:100%;justify-content:center" onclick="doLogin()">🔐 Entrar</button>
+          <button class="btn btn-green" style="width:100%;justify-content:center" onclick="doLogin()">ð Entrar</button>
           <p style="text-align:center;color:#4a6478;font-size:11px;margin-top:10px">Login: admin / 1234</p>
         </div>
       </div></div>`;
@@ -420,14 +420,14 @@ async function doLogin(){
     document.getElementById('nav-user').textContent=user.nome;
     go('dashboard');
   } else {
-    const err=document.getElementById('l-err');err.textContent='Usuário ou senha inválidos';err.style.display='block';
+    const err=document.getElementById('l-err');err.textContent='UsuÃ¡rio ou senha invÃ¡lidos';err.style.display='block';
   }
 }
 function logout(){sessionStorage.removeItem('user');currentUser=null;showLogin();}
 
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 // ROUTER
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 const PAGES={
   dashboard:{label:'Dashboard',fn:pgDashboard},
   receitas:{label:'Receitas',fn:pgReceitas},
@@ -435,26 +435,26 @@ const PAGES={
   contas_receber:{label:'Contas a Receber',fn:pgContasReceber},
   contas_pagar:{label:'Contas a Pagar',fn:pgContasPagar},
   extrato:{label:'Extrato Comparativo',fn:pgExtrato},
-  transferencias:{label:'Transferências',fn:pgTransferencias},
-  cartao:{label:'Cartões de Crédito',fn:pgCartao},
-  poupanca:{label:'Poupança',fn:pgPoupanca},
-  relatorios:{label:'Relatórios',fn:pgRelatorios},
-  graficos:{label:'Gráficos',fn:pgGraficos},
-  conciliacao:{label:'Conciliação Bancária',fn:pgConciliacao},
-  dre:{label:'DRE — Demonstração do Resultado',fn:pgDRE},
-  balanco:{label:'Balanço Patrimonial',fn:pgBalanco},
+  transferencias:{label:'TransferÃªncias',fn:pgTransferencias},
+  cartao:{label:'CartÃµes de CrÃ©dito',fn:pgCartao},
+  poupanca:{label:'PoupanÃ§a',fn:pgPoupanca},
+  relatorios:{label:'RelatÃ³rios',fn:pgRelatorios},
+  graficos:{label:'GrÃ¡ficos',fn:pgGraficos},
+  conciliacao:{label:'ConciliaÃ§Ã£o BancÃ¡ria',fn:pgConciliacao},
+  dre:{label:'DRE â DemonstraÃ§Ã£o do Resultado',fn:pgDRE},
+  balanco:{label:'BalanÃ§o Patrimonial',fn:pgBalanco},
   notas_fiscais:{label:'Notas Fiscais Recebidas',fn:pgNotasFiscais},
   fiscal_dashboard:{label:'Painel Fiscal',fn:pgFiscalDashboard},
   plano_contas:{label:'Plano de Contas',fn:pgPlanoContas},
   cadastros:{label:'Cadastros',fn:pgCadastros},
-  usuarios:{label:'Usuários',fn:pgUsuarios},
+  usuarios:{label:'UsuÃ¡rios',fn:pgUsuarios},
   backup:{label:'Backup / SQL',fn:pgBackup},
 };
 function go(page){
   currentPage=page;
   document.querySelectorAll('.nav-item,.nav-dd-item').forEach(el=>el.classList.toggle('active',el.dataset.page===page));
   const c=document.getElementById('content');
-  c.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted)">⏳ Carregando ${PAGES[page]?.label||page}...</div>`;
+  c.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted)">â³ Carregando ${PAGES[page]?.label||page}...</div>`;
   const p=PAGES[page];if(p?.fn)p.fn(c);
 }
 function setupRealtime(){
@@ -470,20 +470,20 @@ function setupRealtime(){
   });
 }
 </script>
-<!-- O restante das funções do sistema é carregado do arquivo original -->
-<!-- INSTRUÇÕES: Este arquivo contém a estrutura base + correções do schema -->
-<!-- Você precisa colar aqui TODO o conteúdo do <script> original (de pgDashboard até o final) -->
-<!-- substituindo apenas as funções: salvarDespesa e pgBackup pelas versões corrigidas abaixo -->
+<!-- O restante das funÃ§Ãµes do sistema Ã© carregado do arquivo original -->
+<!-- INSTRUÃÃES: Este arquivo contÃ©m a estrutura base + correÃ§Ãµes do schema -->
+<!-- VocÃª precisa colar aqui TODO o conteÃºdo do <script> original (de pgDashboard atÃ© o final) -->
+<!-- substituindo apenas as funÃ§Ãµes: salvarDespesa e pgBackup pelas versÃµes corrigidas abaixo -->
 <script>
-// ═══════════════════════════════════════════════════════════════
-// COLE AQUI o conteúdo original do <script> do FinanceiroApp Pro
-// de pgDashboard() até excluirCad() / pgUsuarios() / ALL_TABLES
-// ═══════════════════════════════════════════════════════════════
-// DEPOIS substitua salvarDespesa e pgBackup pelas versões abaixo:
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// COLE AQUI o conteÃºdo original do <script> do FinanceiroApp Pro
+// de pgDashboard() atÃ© excluirCad() / pgUsuarios() / ALL_TABLES
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// DEPOIS substitua salvarDespesa e pgBackup pelas versÃµes abaixo:
 
-// ────────────────────────────────────────────────────────────────
-// salvarDespesa CORRIGIDA — resiliente a schema incompleto
-// ────────────────────────────────────────────────────────────────
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// salvarDespesa CORRIGIDA â resiliente a schema incompleto
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 async function salvarDespesa(){
   if(parcDespTemp.length===0){toast('Gere as parcelas primeiro!','err');return;}
   const valor=parseFloat(document.getElementById('desp-valor').value)||0;
@@ -518,7 +518,7 @@ async function salvarDespesa(){
       await resilientInsertNoReturn('parcelas_despesa',pFull,pMin);
     }
     document.getElementById('modal-desp').classList.remove('open');
-    toast('Despesa salva com sucesso! ✅','ok');
+    toast('Despesa salva com sucesso! â','ok');
     parcDespTemp=[];
     pgDespesas(document.getElementById('content'));
   }catch(e){
@@ -527,17 +527,17 @@ async function salvarDespesa(){
   }
 }
 
-// ────────────────────────────────────────────────────────────────
-// pgBackup CORRIGIDA — com aba SQL de migração
-// ────────────────────────────────────────────────────────────────
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// pgBackup CORRIGIDA â com aba SQL de migraÃ§Ã£o
+// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 async function pgBackup(c){
   c.innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
-    <div class="sec-title">💾 Backup &amp; Banco de Dados</div>
+    <div class="sec-title">ð¾ Backup &amp; Banco de Dados</div>
     <div class="tabs" id="bk-tabs">
-      <div class="tab active" data-t="export" onclick="bkTab('export',this)">📤 Exportar</div>
-      <div class="tab" data-t="import" onclick="bkTab('import',this)">📥 Restaurar</div>
-      <div class="tab" data-t="csv" onclick="bkTab('csv',this)">📊 CSV</div>
-      <div class="tab" data-t="sql" onclick="bkTab('sql',this)" style="color:var(--red);font-weight:800">🛠️ Migração SQL</div>
+      <div class="tab active" data-t="export" onclick="bkTab('export',this)">ð¤ Exportar</div>
+      <div class="tab" data-t="import" onclick="bkTab('import',this)">ð¥ Restaurar</div>
+      <div class="tab" data-t="csv" onclick="bkTab('csv',this)">ð CSV</div>
+      <div class="tab" data-t="sql" onclick="bkTab('sql',this)" style="color:var(--red);font-weight:800">ð ï¸ MigraÃ§Ã£o SQL</div>
     </div>
     <div id="bk-body"></div>
   </div>`;
@@ -547,33 +547,33 @@ function bkTab(t,el){
   document.querySelectorAll('#bk-tabs .tab').forEach(x=>x.classList.toggle('active',x.dataset.t===t));
   const body=document.getElementById('bk-body');
   if(t==='export'){
-    body.innerHTML=`<div class="card"><div class="card-title">📤 Exportar Backup</div>
+    body.innerHTML=`<div class="card"><div class="card-title">ð¤ Exportar Backup</div>
       <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Exporta todos os dados em JSON.</p>
-      <button class="btn btn-green" onclick="exportBk()">💾 Baixar Backup JSON</button>
+      <button class="btn btn-green" onclick="exportBk()">ð¾ Baixar Backup JSON</button>
     </div>`;
   }else if(t==='import'){
-    body.innerHTML=`<div class="card"><div class="card-title">📥 Restaurar Backup</div>
+    body.innerHTML=`<div class="card"><div class="card-title">ð¥ Restaurar Backup</div>
       <p style="color:var(--muted);font-size:13px;margin-bottom:10px"><strong style="color:var(--red)">Substitui TODOS os dados!</strong></p>
       <div class="form-group"><input type="file" class="field" id="bk-file" accept=".json" style="height:auto;padding:8px"></div>
-      <button class="btn btn-red" onclick="importBk()">⚠️ Restaurar</button>
+      <button class="btn btn-red" onclick="importBk()">â ï¸ Restaurar</button>
     </div>
     <div class="card" style="border-color:var(--red);margin-top:10px">
-      <div class="card-title" style="color:var(--red)">⚠️ Zona de Perigo</div>
-      <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Remove todos os lançamentos (mantém cadastros).</p>
-      <button class="btn btn-red" onclick="limparTudo()">🗑 Limpar Lançamentos</button>
+      <div class="card-title" style="color:var(--red)">â ï¸ Zona de Perigo</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:10px">Remove todos os lanÃ§amentos (mantÃ©m cadastros).</p>
+      <button class="btn btn-red" onclick="limparTudo()">ð Limpar LanÃ§amentos</button>
     </div>`;
   }else if(t==='csv'){
-    body.innerHTML=`<div class="card"><div class="card-title">📊 Exportar CSV</div>
+    body.innerHTML=`<div class="card"><div class="card-title">ð Exportar CSV</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-white btn-sm" onclick="exportCSV('parcelas_receita','receitas')">📥 Receitas</button>
-        <button class="btn btn-white btn-sm" onclick="exportCSV('parcelas_despesa','despesas')">📥 Despesas</button>
-        <button class="btn btn-white btn-sm" onclick="exportCSV('contas_pagar','contas_pagar')">📥 Contas a Pagar</button>
-        <button class="btn btn-white btn-sm" onclick="exportCSV('lancamentos_cartao','cartoes')">📥 Cartões</button>
-        <button class="btn btn-white btn-sm" onclick="exportCSV('notas_fiscais','notas_fiscais')">📥 Notas Fiscais</button>
+        <button class="btn btn-white btn-sm" onclick="exportCSV('parcelas_receita','receitas')">ð¥ Receitas</button>
+        <button class="btn btn-white btn-sm" onclick="exportCSV('parcelas_despesa','despesas')">ð¥ Despesas</button>
+        <button class="btn btn-white btn-sm" onclick="exportCSV('contas_pagar','contas_pagar')">ð¥ Contas a Pagar</button>
+        <button class="btn btn-white btn-sm" onclick="exportCSV('lancamentos_cartao','cartoes')">ð¥ CartÃµes</button>
+        <button class="btn btn-white btn-sm" onclick="exportCSV('notas_fiscais','notas_fiscais')">ð¥ Notas Fiscais</button>
       </div>
     </div>`;
   }else if(t==='sql'){
-    const sql=`-- FinanceiroApp Pro — Migração de Schema Supabase
+    const sql=`-- FinanceiroApp Pro â MigraÃ§Ã£o de Schema Supabase
 -- Execute no Supabase Dashboard > SQL Editor
 -- https://supabase.com/dashboard/project/iqefyujbohknfkiitqcj/editor
 
@@ -609,7 +609,7 @@ ALTER TABLE parcelas_despesa
   ADD COLUMN IF NOT EXISTS descricao TEXT,
   ADD COLUMN IF NOT EXISTS categoria TEXT;
 
--- 3. CRIAR TABELA NOTAS FISCAIS (se não existir)
+-- 3. CRIAR TABELA NOTAS FISCAIS (se nÃ£o existir)
 CREATE TABLE IF NOT EXISTS notas_fiscais (
   id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
   empresa TEXT DEFAULT 'DL', tipo TEXT, numero TEXT, serie TEXT,
@@ -638,18 +638,18 @@ CREATE TABLE IF NOT EXISTS notas_fiscais_itens (
   aliquota_icms NUMERIC(5,2), valor_icms NUMERIC(12,2)
 );
 
-SELECT 'Migração concluída!' as resultado;`;
+SELECT 'MigraÃ§Ã£o concluÃ­da!' as resultado;`;
     body.innerHTML=`<div class="card" style="border-color:var(--amber)">
-      <div class="card-title" style="color:var(--amber)">🛠️ SQL de Migração do Banco de Dados</div>
+      <div class="card-title" style="color:var(--amber)">ð ï¸ SQL de MigraÃ§Ã£o do Banco de Dados</div>
       <div class="alert alert-amber" style="margin-bottom:12px">
         Execute este SQL no Supabase para corrigir erros de colunas faltantes como:<br>
         <code>"Could not find the 'empresa' column of 'despesas' in the schema cache"</code>
       </div>
-      <div style="background:#0e1c2b;border-radius:8px;padding:16px;font-family:'DM Mono',monospace;font-size:11px;color:#4cde85;margin-bottom:12px;overflow-x:auto;max-height:380px;overflow-y:auto;white-space:pre" id="sql-box">${sql.replace(/</g,'&lt;')}</div>
+      <div style="background:#0e1c2b;border-radius:8px;padding:16px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#4cde85;margin-bottom:12px;overflow-x:auto;max-height:380px;overflow-y:auto;white-space:pre" id="sql-box">${sql.replace(/</g,'&lt;')}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-amber btn-sm" onclick="copiarSQL()">📋 Copiar SQL</button>
-        <a class="btn btn-blue btn-sm" href="https://supabase.com/dashboard/project/iqefyujbohknfkiitqcj/editor" target="_blank">🔗 Abrir SQL Editor</a>
-        <button class="btn btn-green btn-sm" onclick="testarSchema()">✅ Testar Schema</button>
+        <button class="btn btn-amber btn-sm" onclick="copiarSQL()">ð Copiar SQL</button>
+        <a class="btn btn-blue btn-sm" href="https://supabase.com/dashboard/project/iqefyujbohknfkiitqcj/editor" target="_blank">ð Abrir SQL Editor</a>
+        <button class="btn btn-green btn-sm" onclick="testarSchema()">â Testar Schema</button>
       </div>
     </div>`;
     window._migrationSQL=sql;
@@ -661,14 +661,14 @@ async function testarSchema(){
   let erros=0;
   for(const t of testes){
     const{error}=await supa.from(t.table).select(t.col).limit(1);
-    if(error){toast(`❌ ${t.table}.${t.col}: ${error.message}`,'err');erros++;}
+    if(error){toast(`â ${t.table}.${t.col}: ${error.message}`,'err');erros++;}
   }
-  if(erros===0)toast('✅ Schema OK! Todas as colunas encontradas.','ok');
+  if(erros===0)toast('â Schema OK! Todas as colunas encontradas.','ok');
 }
 
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 // INIT
-// ═══════════════════════════════════
+// âââââââââââââââââââââââââââââââââââ
 async function init(){
   setupRealtime();
   const sess=sessionStorage.getItem('user');
