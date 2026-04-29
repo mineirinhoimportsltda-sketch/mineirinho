@@ -3547,7 +3547,21 @@ function criarModalConta(){
   const d=document.createElement('div');
   d.id='modal-conta';
   d.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
-  d.innerHTML='<div style="background:#fff;padding:28px;border-radius:12px;width:400px;max-width:95vw"><h3>Nova Conta</h3><label>Nome<input id="fc-nome" class="form-control" style="display:block;width:100%;margin:6px 0 12px"></label><label>Tipo<select id="fc-tipo" class="form-control" style="display:block;width:100%;margin:6px 0 12px"><option>Conta Corrente</option><option>Conta Poupança</option><option>Caixa</option><option>Cartão</option></select></label><label>Saldo Inicial<input id="fc-saldo" type="number" step="0.01" value="0" class="form-control" style="display:block;width:100%;margin:6px 0 12px"></label><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn secondary" onclick="document.getElementById('modal-conta').style.display='none'">Cancelar</button><button class="btn primary" onclick="contaSalvarForm()">Salvar</button></div></div>';
+  const box=document.createElement('div');
+  box.style.cssText='background:#fff;padding:28px;border-radius:12px;width:400px;max-width:95vw';
+  box.innerHTML=[
+    '<h3>Nova Conta</h3>',
+    '<label>Nome<input id="fc-nome" class="form-control" style="display:block;width:100%;margin:6px 0 12px"></label>',
+    '<label>Tipo<select id="fc-tipo" class="form-control" style="display:block;width:100%;margin:6px 0 12px">',
+    '<option>Conta Corrente</option><option>Conta Poupanca</option><option>Caixa</option><option>Cartao</option>',
+    '</select></label>',
+    '<label>Saldo Inicial<input id="fc-saldo" type="number" step="0.01" value="0" class="form-control" style="display:block;width:100%;margin:6px 0 12px"></label>',
+    '<div style="display:flex;gap:8px;justify-content:flex-end">',
+    '<button class="btn secondary" onclick="document.getElementById(&quot;modal-conta&quot;).style.display=&quot;none&quot;">Cancelar</button>',
+    '<button class="btn primary" onclick="contaSalvarForm()">Salvar</button>',
+    '</div>'
+  ].join('');
+  d.appendChild(box);
   document.body.appendChild(d);
   return d;
 }
