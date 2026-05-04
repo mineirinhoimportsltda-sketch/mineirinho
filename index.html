@@ -2521,7 +2521,7 @@ async function salvarDespesa(){
 
     // Salva parcelas — dbAdd remove automaticamente colunas inexistentes
     for(const p of parcDespTemp){
-      const pagoAgora=(situacao==='pago')||!!p.quitado;
+      const pagoAgora=(!isEdit&&situacao==='pago')||!!p.quitado;
       const dtPgto=pagoAgora?(dataPagamentoSel||p.vencimento):null;
       const parcObj={
         numero:p.numero,total:p.total,vencimento:p.vencimento,valor:p.valor,
