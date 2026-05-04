@@ -1090,7 +1090,7 @@ async function syncContasPagarComDespesas(){
       if(colsCP.has('tipo_comprovante')) base.tipo_comprovante=existe?.tipo_comprovante||null;
       if(colsCP.has('comprovante_status')) base.comprovante_status=existe?.comprovante_status||null;
       if(existe) await dbSafeUpdate('contas_pagar',base,'id',existe.id);
-      else await dbAdd('contas_pagar',base);
+      else if(!cpFinal.some(r=>String(r.origem_tipo||'')==='despesas'&&String(r.origem_id||'')===String(p.despesa_id)&&String(r.parcela||'').replace(' (saldo)','')===parcelaTxt))await dbAdd('contas_pagar',base);
     }
   }catch(e){console.warn('syncContasPagarComDespesas',e);}finally{_syncCPRunning=false;}
 }
