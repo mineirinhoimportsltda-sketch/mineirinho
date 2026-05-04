@@ -2305,7 +2305,7 @@ async function pgDespesas(c){
       <div style="display:flex;gap:8px"><button class="btn secondary small" onclick="go('contas_pagar')">📤 Contas a Pagar</button><button class="btn danger small" onclick="despOpenModal()">＋ Nova Despesa</button></div>
     </div>
     <div class="notice blue">💡 Use <strong>Contas a Pagar</strong> para despesas com controle de vencimento, baixa e fornecedor.</div>
-    <div class="card"><div class="section-title">📤 Lançamentos vindos de Contas a Pagar</div><div class="section-sub">Tudo que você cadastra em A Pagar também aparece aqui para conferência.</div><div class="tbl-wrap"><table><thead><tr><th>Emp</th><th>Fornecedor</th><th>Tipo</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead><tbody id="desp-cp-body"><tr><td colspan="7" class="empty"><p>Carregando...</p></td></tr></tbody></table></div></div>
+    <div class="card"><div class="section-title">📤 Lançamentos vindos de Contas a Pagar</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;align-items:center;font-size:13px;"><label>Mês: <select id="filtMes"><option value="">Todos</option><option value="01">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option></select></label><label>Empresa: <select id="filtEmp"><option value="">Todas</option><option value="DUARTE LACERDA">DUARTE LACERDA</option><option value="MINEIRINHO">MINEIRINHO</option></select></label><label>Conta: <input id="filtConta" type="text" placeholder="filtrar conta" style="padding:4px;"></label><button class="btn small" type="button" onclick="window.aplicarFiltrosDesp&&window.aplicarFiltrosDesp()">🔎 Aplicar</button><button class="btn small" type="button" onclick="document.getElementById('filtMes').value='';document.getElementById('filtEmp').value='';document.getElementById('filtConta').value='';window.aplicarFiltrosDesp&&window.aplicarFiltrosDesp();">Limpar</button></div><div class="section-sub">Tudo que você cadastra em A Pagar também aparece aqui para conferência.</div><div class="tbl-wrap"><table><thead><tr><th>Emp</th><th>Fornecedor</th><th>Tipo</th><th>Parcela</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead><tbody id="desp-cp-body"><tr><td colspan="7" class="empty"><p>Carregando...</p></td></tr></tbody></table></div></div>
     <div class="card"><div class="tbl-wrap"><table><thead><tr><th>#</th><th>Emp</th><th>Data</th><th>Conta</th><th>Cat.</th><th>Fornecedor</th><th>Parc.</th><th>Total</th><th>NF</th><th>Comp.</th><th>Status</th><th></th></tr></thead>
     <tbody>${fDesp.length===0?'<tr><td colspan="12" class="empty"><p>Nenhuma</p></td></tr>':
     fDesp.slice().reverse().map(d=>`<tr><td>${d.id}</td><td>${empTag(d.empresa)}</td><td>${fDate(d.data_lancamento)}</td><td>${esc(d.conta_nome||'')}</td><td><div style="font-size:12px;font-weight:700;color:var(--danger)">${esc(d.cat_nome||'—')}</div>${d.subcat?`<div style="font-size:10px;color:var(--muted)">${esc(d.subcat)}</div>`:''}</td><td>${esc(d.forn_nome||'-')}</td><td>${d.qtde_parcelas}x</td><td class="mono" style="color:var(--danger)">${R$(d.valor_total)}</td><td>${nfBadgeDetalhe(d)}</td><td>${comprovanteBadgeHtml({comprovante:d.comprovante_txt})}</td><td>${d.pago?'<span class="badge b-green">Pago</span>':'<span class="badge b-amber">Em aberto</span>'}</td><td><div style="display:flex;gap:4px"><button class="btn secondary xs" onclick="despAbrirForm(${d.id})">✏️</button><button class="btn danger xs" onclick="excluirDespesa(${d.id})">🗑</button></div></td></tr>`).join('')}
@@ -2333,7 +2333,7 @@ async function pgDespesas(c){
       <div class="form-group"><label class="form-label">Data Pagamento</label>
         <input type="date" class="field" id="desp-dt-pago" value="${today()}">
       </div>
-      <div class="form-group"><label class="form-label">Valor Parcela *</label><input type="number" step="0.01" class="field" id="desp-valor" oninput="despCalcTotal()"></div>
+      <div class="form-group"><label class="form-label">Nº Nota Fiscal</label><input type="text" class="field" id="despNumNF" placeholder="ex: 12345"><label class="form-label">Data NF</label><input type="date" class="field" id="despDataNF"><label class="form-label">Valor Parcela *</label><input type="number" step="0.01" class="field" id="desp-valor" oninput="despCalcTotal()"></div>
       <div class="form-group"><label class="form-label">Qtde Parcelas</label><input type="number" class="field" id="desp-qtde" value="1" oninput="despCalcTotal()"></div>
       <div class="form-group"><label class="form-label">Total</label><input class="field" id="desp-total-lbl" readonly style="background:#f8fafc;color:var(--danger);font-weight:700"></div>
     </div>
@@ -4827,6 +4827,45 @@ async function diagMostrarTudo(){
 }
 
 window.addEventListener('DOMContentLoaded',init);
+</script>
+
+<script>
+window.aplicarFiltrosDesp = function(){
+  try{
+    var mes=(document.getElementById('filtMes')||{}).value||'';
+    var emp=(document.getElementById('filtEmp')||{}).value||'';
+    var cta=((document.getElementById('filtConta')||{}).value||'').toLowerCase();
+    document.querySelectorAll('table tbody tr').forEach(function(r){
+      var tds=r.querySelectorAll('td'); if(tds.length<3) return;
+      var rowEmp=(tds[0].innerText||'').trim();
+      var rowData=(tds[1].innerText||'').trim();
+      var rowConta=(tds[2].innerText||'').trim().toLowerCase();
+      var mD=rowData.match(/\d{2}\/(\d{2})\/\d{4}/); var mesRow=mD?mD[1]:'';
+      var ok=true;
+      if(mes && mesRow!==mes) ok=false;
+      if(emp && rowEmp.toUpperCase().indexOf(emp.toUpperCase())<0) ok=false;
+      if(cta && rowConta.indexOf(cta)<0) ok=false;
+      r.style.display=ok?'':'none';
+    });
+  }catch(e){console.warn(e);}
+};
+window.ordenarDespPorData = function(){
+  try{
+    document.querySelectorAll('table').forEach(function(tbl){
+      var tb=tbl.tBodies[0]; if(!tb) return;
+      var ths=tbl.tHead&&tbl.tHead.rows[0]?Array.from(tbl.tHead.rows[0].cells).map(function(c){return c.innerText.trim();}):[];
+      var di=ths.indexOf('Data'); if(di<0) return;
+      var rows=Array.from(tb.rows);
+      function p(x){var m=x.match(/(\d{2})\/(\d{2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]).getTime():0;}
+      rows.sort(function(a,b){return p((b.cells[di]||{innerText:''}).innerText)-p((a.cells[di]||{innerText:''}).innerText);});
+      rows.forEach(function(r){tb.appendChild(r);});
+    });
+  }catch(e){console.warn(e);}
+};
+document.addEventListener('input',function(e){if(e.target&&['filtMes','filtEmp','filtConta'].indexOf(e.target.id)>=0)window.aplicarFiltrosDesp();});
+document.addEventListener('change',function(e){if(e.target&&['filtMes','filtEmp'].indexOf(e.target.id)>=0)window.aplicarFiltrosDesp();});
+var _mo=new MutationObserver(function(){window.ordenarDespPorData();window.aplicarFiltrosDesp();});
+window.addEventListener('load',function(){document.querySelectorAll('table').forEach(function(tbl){try{_mo.observe(tbl,{childList:true,subtree:true});}catch(e){}});setTimeout(function(){window.ordenarDespPorData();window.aplicarFiltrosDesp();},800);});
 </script>
 </body>
 </html>
