@@ -19,7 +19,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 button,input,select,textarea{font-family:inherit}
 .hidden{display:none!important}
 #nav{height:var(--nav-h);background:var(--nav);display:flex;align-items:center;padding:0 16px;gap:0;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.05);z-index:200}
-.brand{display:flex;flex-direction:column;flex-shrink:0;margin-right:20px}
+.brand{display:flex;flex-direction:column;hflex-shrink:0;margin-right:20px}
 .brand b{font-size:14px;color:#fff;letter-spacing:.2px}
 .brand span{font-size:11px;color:#8a9ab5}
 .top-menu{display:flex;align-items:stretch;gap:2px;flex:1}
@@ -2444,7 +2444,7 @@ async function despAbrirForm(id=null){
     document.getElementById('desp-forma').selectedIndex=0;
     document.getElementById('desp-desc').value='';
     document.getElementById('desp-data1').value=today();
-    document.getElementById('desp-situacao').value='pago';
+    document.getElementById('desp-situacao').value='aberto';
     document.getElementById('desp-dt-pago').value=today();
     document.getElementById('desp-valor').value='';
     document.getElementById('desp-qtde').value='1';
