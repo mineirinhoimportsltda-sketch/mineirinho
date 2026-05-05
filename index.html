@@ -2333,7 +2333,7 @@ async function pgDespesas(c){
       <div class="form-group"><label class="form-label">Data Pagamento</label>
         <input type="date" class="field" id="desp-dt-pago" value="${today()}">
       </div>
-      <div class="form-group"><label class="form-label">Nº Nota Fiscal</label><input type="text" class="field" id="despNumNF" placeholder="ex: 12345"><label class="form-label">Data NF</label><input type="date" class="field" id="despDataNF"><label class="form-label">Valor Parcela *</label><input type="number" step="0.01" class="field" id="desp-valor" oninput="despCalcTotal()"></div>
+      <div class="form-group"><label class="form-label">Tem Nota Fiscal?</label><select class="field" id="despTemNF"><option value="nao">Não</option><option value="sim">Sim</option></select><label class="form-label">Nº Nota Fiscal</label><input type="text" class="field" id="despNumNF" placeholder="ex: 12345"><label class="form-label">Data NF</label><input type="date" class="field" id="despDataNF"><label class="form-label">Comprovante (URL/obs)</label><input type="text" class="field" id="despComprovante" placeholder="link ou descrição"><label class="form-label">Valor Parcela *</label><input type="number" step="0.01" class="field" id="desp-valor" oninput="despCalcTotal()"></div>
       <div class="form-group"><label class="form-label">Qtde Parcelas</label><input type="number" class="field" id="desp-qtde" value="1" oninput="despCalcTotal()"></div>
       <div class="form-group"><label class="form-label">Total</label><input class="field" id="desp-total-lbl" readonly style="background:#f8fafc;color:var(--danger);font-weight:700"></div>
     </div>
@@ -4829,43 +4829,76 @@ async function diagMostrarTudo(){
 window.addEventListener('DOMContentLoaded',init);
 </script>
 
+
+
 <script>
-window.aplicarFiltrosDesp = function(){
-  try{
-    var mes=(document.getElementById('filtMes')||{}).value||'';
-    var emp=(document.getElementById('filtEmp')||{}).value||'';
-    var cta=((document.getElementById('filtConta')||{}).value||'').toLowerCase();
-    document.querySelectorAll('table tbody tr').forEach(function(r){
-      var tds=r.querySelectorAll('td'); if(tds.length<3) return;
-      var rowEmp=(tds[0].innerText||'').trim();
-      var rowData=(tds[1].innerText||'').trim();
-      var rowConta=(tds[2].innerText||'').trim().toLowerCase();
-      var mD=rowData.match(/\d{2}\/(\d{2})\/\d{4}/); var mesRow=mD?mD[1]:'';
-      var ok=true;
-      if(mes && mesRow!==mes) ok=false;
-      if(emp && rowEmp.toUpperCase().indexOf(emp.toUpperCase())<0) ok=false;
-      if(cta && rowConta.indexOf(cta)<0) ok=false;
-      r.style.display=ok?'':'none';
-    });
-  }catch(e){console.warn(e);}
-};
-window.ordenarDespPorData = function(){
-  try{
-    document.querySelectorAll('table').forEach(function(tbl){
-      var tb=tbl.tBodies[0]; if(!tb) return;
-      var ths=tbl.tHead&&tbl.tHead.rows[0]?Array.from(tbl.tHead.rows[0].cells).map(function(c){return c.innerText.trim();}):[];
-      var di=ths.indexOf('Data'); if(di<0) return;
-      var rows=Array.from(tb.rows);
-      function p(x){var m=x.match(/(\d{2})\/(\d{2})\/(\d{4})/); return m?new Date(+m[3],+m[2]-1,+m[1]).getTime():0;}
-      rows.sort(function(a,b){return p((b.cells[di]||{innerText:''}).innerText)-p((a.cells[di]||{innerText:''}).innerText);});
+(function(){
+  function colIndex(tbl, name){
+    if(!tbl.tHead||!tbl.tHead.rows[0]) return -1;
+    var ths = Array.from(tbl.tHead.rows[0].cells).map(function(c){return c.innerText.trim().toUpperCase();});
+    return ths.indexOf(name.toUpperCase());
+  }
+  function targetTable(){
+    var tbls = document.querySelectorAll('table');
+    for(var i=0;i<tbls.length;i++){
+      var tb=tbls[i];
+      if(!tb.tHead||!tb.tHead.rows[0]) continue;
+      var ths = Array.from(tb.tHead.rows[0].cells).map(function(c){return c.innerText.trim().toUpperCase();});
+      if(ths.indexOf('DATA')>=0 && ths.indexOf('CONTA')>=0) return tb;
+    }
+    return null;
+  }
+  window.aplicarFiltrosDesp = function(){
+    try{
+      var mes=(document.getElementById('filtMes')||{}).value||'';
+      var emp=(document.getElementById('filtEmp')||{}).value||'';
+      var cta=((document.getElementById('filtConta')||{}).value||'').toLowerCase();
+      var tbl = targetTable(); if(!tbl) return;
+      var iEmp = colIndex(tbl,'EMP');
+      var iData = colIndex(tbl,'DATA');
+      var iConta = colIndex(tbl,'CONTA');
+      Array.from(tbl.tBodies[0].rows).forEach(function(r){
+        if(!r.cells.length) return;
+        var rowEmp = iEmp>=0 && r.cells[iEmp] ? r.cells[iEmp].innerText.trim().toUpperCase() : '';
+        var rowData = iData>=0 && r.cells[iData] ? r.cells[iData].innerText.trim() : '';
+        var rowConta = iConta>=0 && r.cells[iConta] ? r.cells[iConta].innerText.trim().toLowerCase() : '';
+        var mD = rowData.match(/\d{2}\/(\d{2})\/\d{4}/);
+        var mesRow = mD ? mD[1] : '';
+        var ok = true;
+        if(mes && mesRow!==mes) ok=false;
+        if(emp && rowEmp.indexOf(emp.toUpperCase())<0) ok=false;
+        if(cta && rowConta.indexOf(cta)<0) ok=false;
+        r.style.display = ok ? '' : 'none';
+      });
+    }catch(e){console.warn('filtro',e);}
+  };
+  window.ordenarDespPorData = function(){
+    try{
+      var tbl = targetTable(); if(!tbl) return;
+      var di = colIndex(tbl,'DATA'); if(di<0) return;
+      var tb = tbl.tBodies[0];
+      var rows = Array.from(tb.rows);
+      function p(x){var m=x.match(/(\d{2})\/(\d{2})\/(\d{4})/); return m? new Date(+m[3],+m[2]-1,+m[1]).getTime():0;}
+      rows.sort(function(a,b){return p(b.cells[di]?b.cells[di].innerText:'') - p(a.cells[di]?a.cells[di].innerText:'');});
       rows.forEach(function(r){tb.appendChild(r);});
-    });
-  }catch(e){console.warn(e);}
-};
-document.addEventListener('input',function(e){if(e.target&&['filtMes','filtEmp','filtConta'].indexOf(e.target.id)>=0)window.aplicarFiltrosDesp();});
-document.addEventListener('change',function(e){if(e.target&&['filtMes','filtEmp'].indexOf(e.target.id)>=0)window.aplicarFiltrosDesp();});
-var _mo=new MutationObserver(function(){window.ordenarDespPorData();window.aplicarFiltrosDesp();});
-window.addEventListener('load',function(){document.querySelectorAll('table').forEach(function(tbl){try{_mo.observe(tbl,{childList:true,subtree:true});}catch(e){}});setTimeout(function(){window.ordenarDespPorData();window.aplicarFiltrosDesp();},800);});
+    }catch(e){console.warn('ord',e);}
+  };
+  document.addEventListener('input',function(e){if(e.target&&['filtMes','filtEmp','filtConta'].indexOf(e.target.id)>=0)window.aplicarFiltrosDesp();});
+  document.addEventListener('change',function(e){if(e.target&&['filtMes','filtEmp','filtConta'].indexOf(e.target.id)>=0)window.aplicarFiltrosDesp();});
+  // Toggle Tem NF: habilita/desabilita campos NF
+  document.addEventListener('change',function(e){
+    if(e.target&&e.target.id==='despTemNF'){
+      var on = e.target.value==='sim';
+      var n=document.getElementById('despNumNF'); var d=document.getElementById('despDataNF');
+      if(n){n.disabled=!on; if(!on)n.value='';}
+      if(d){d.disabled=!on; if(!on)d.value='';}
+    }
+  });
+  var debounce;
+  var mo = new MutationObserver(function(){clearTimeout(debounce);debounce=setTimeout(function(){window.ordenarDespPorData();window.aplicarFiltrosDesp();},250);});
+  function arm(){document.querySelectorAll('table').forEach(function(t){try{mo.observe(t,{childList:true,subtree:true});}catch(e){}});}
+  window.addEventListener('load',function(){arm();setTimeout(function(){window.ordenarDespPorData();window.aplicarFiltrosDesp();},1000);setInterval(arm,3000);});
+})();
 </script>
 </body>
 </html>
